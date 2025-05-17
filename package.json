@@ -9,16 +9,26 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.799.0",
     "@aws-sdk/client-dynamodb": "^3.799.0",
+    "@aws-sdk/lib-dynamodb": "^3.808.0",
     "@aws-sdk/util-dynamodb": "^3.799.0",
+    "@heroui/react": "^2.8.0-beta.4",
+    "@stripe/react-stripe-js": "^3.7.0",
+    "@stripe/stripe-js": "^7.3.0",
     "@types/react-datepicker": "^6.2.0",
+    "aws-sdk": "^2.1692.0",
+    "framer-motion": "^12.11.0",
     "next": "15.3.1",
-    "react": "^19.0.0",
+    "react": "^19.1.0",
     "react-datepicker": "^8.3.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.1.0",
+    "stripe": "^18.1.0",
+    "tailwindcss": "^4.1.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4"
+    "@tailwindcss/postcss": "^4.1.6",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3"
   }
 }

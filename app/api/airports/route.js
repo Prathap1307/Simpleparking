@@ -1,9 +1,10 @@
 // app/api/airports/route.js
-import { getAirports } from "@/lib/Database/airports-db";
+import { getAllItems } from "@/lib/Database/Utils-db";
 
 export async function GET() {
+  const table_name = process.env.Location_table
   try {
-    const airports = await getAirports();
+    const airports = await getAllItems(table_name);
     return new Response(JSON.stringify(airports), {
       status: 200,
       headers: {
