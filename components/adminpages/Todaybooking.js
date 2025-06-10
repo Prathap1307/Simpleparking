@@ -35,13 +35,14 @@ export default function TodaysBookings() {
   const [ ParkingslotData, setParkingslotData] = useState([])
 
   const columns = [
-    { name: "Customer Name", uid: "ParkingName" },
+    { name: "Order ID", uid: "OrderId" },
+    { name: " Name", uid: "ParkingName" },
+    { name: "Parking Space", uid: "CustomerName" },
     { name: "Customer Email", uid: "CustomerEmail" },
     { name: "Phone Number", uid: "CustomerPhone" },
-    { name: "From Date", uid: "FromDate" },
-    { name: "To Date", uid: "ToDate" },
+    { name: "From Date", uid: "FromDateTime" },
+    { name: "To Date", uid: "ToDateTime" },
     { name: "Airport", uid: "Airport" },
-    { name: "Parking Space", uid: "ParkingSlot" },
     { name: "Paid Price", uid: "PaidAmount" },
     { name: "ACTIONS", uid: "actions" },
   ];

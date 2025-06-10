@@ -73,9 +73,10 @@ export default function Parkingsearchcmp({
             <DatePicker
               selected={dropOffDate}
               onChange={setDropOffDate}
-              minDate={new Date()}
+              minDate={"NA"}
               placeholderText="Select date"
               className="w-full p-2 border border-gray-300 rounded-md"
+              dateFormat="dd/MM/yyyy"
             />
             {errors.dropOff && <p className="text-red-500 text-xs">{errors.dropOff}</p>}
           </div>
@@ -102,9 +103,10 @@ export default function Parkingsearchcmp({
             <DatePicker
               selected={pickupDate}
               onChange={setPickupDate}
-              minDate={dropOffDate || new Date()}
+              minDate={dropOffDate}
               placeholderText="Select date"
               className="w-full p-2 border border-gray-300 rounded-md"
+              dateFormat="dd/MM/yyyy"
             />
             {errors.pickup && <p className="text-red-500 text-xs">{errors.pickup}</p>}
             {errors.pickupBeforeDropOff && <p className="text-red-500 text-xs">{errors.pickupBeforeDropOff}</p>}
@@ -118,9 +120,9 @@ export default function Parkingsearchcmp({
               showTimeSelectOnly
               timeIntervals={15}
               timeCaption="Time"
-              dateFormat="h:mm aa"
               className="w-full p-2 border border-gray-300 rounded-md"
               placeholderText="Select time"
+              dateFormat="h:mm aa"
             />
           </div>
         </div>

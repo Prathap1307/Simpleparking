@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import Cardscmp from '@/components/Cardscmp';
 import Navbarcmp from '@/components/Navbar';
+import LoadingCard from '@/components/Loading';
 import React, { useEffect, useState } from 'react';
 
 export default function Page() {
@@ -13,36 +14,39 @@ export default function Page() {
   const [LocationsData, setLocationsData] = useState([]);
   const [ParkingslotData, setParkingslotData] = useState([]);
   const [filteredSlots, setFilteredSlots] = useState([]);
+  const [searching, setSearching] = useState(true); // Start as loading
 
-  const fetchlocations = async () => {
+  const [duration, setDuration] = useState({ days: 0, hours: 0 });
+
+
+  const fetchAllData = async () => {
+    setSearching(true); // Show loading
     try {
-      const res = await fetch("/api/Locations");
-      if (!res.ok) throw new Error("Failed to fetch locations data");
-      const data = await res.json();
-      setLocationsData(data);
+      const [locationsRes, parkingRes] = await Promise.all([
+        fetch("/api/Locations"),
+        fetch("/api/Parkingspace"),
+      ]);
+
+      if (!locationsRes.ok || !parkingRes.ok) {
+        throw new Error("Failed to fetch data");
+      }
+
+      const locationsData = await locationsRes.json();
+      const parkingData = await parkingRes.json();
+
+      setLocationsData(locationsData);
+      setParkingslotData(parkingData);
     } catch (err) {
-      console.error("Error refreshing locations data:", err);
+      console.error("Error fetching data:", err);
+    } finally {
+      setSearching(false); // Hide loading
     }
   };
 
-  const fetchparkingslots = async () => {
-    try {
-      const res = await fetch("/api/Parkingspace");
-      if (!res.ok) throw new Error("Failed to fetch parking data");
-      const data = await res.json();
-      setParkingslotData(data);
-    } catch (err) {
-      console.error("Error refreshing parking data:", err);
-    }
-  };
-
-  // Fetch both on mount
   useEffect(() => {
-    fetchlocations();
-    fetchparkingslots();
+    fetchAllData();
   }, []);
 
-  // Filter slots when data or airport changes
   useEffect(() => {
     const filtered = ParkingslotData.filter(
       (slot) =>
@@ -50,6 +54,27 @@ export default function Page() {
     );
     setFilteredSlots(filtered);
   }, [ParkingslotData, selectedAirport]);
+
+    useEffect(() => {
+    const storedData = sessionStorage.getItem("parkingSearchData");
+    if (storedData) {
+      const { dropOffDate, dropOffTime, pickupDate, pickupTime } = JSON.parse(storedData);
+
+      const dropOff = new Date(dropOffDate);
+      dropOff.setHours(new Date(dropOffTime).getHours(), new Date(dropOffTime).getMinutes());
+
+      const pickup = new Date(pickupDate);
+      pickup.setHours(new Date(pickupTime).getHours(), new Date(pickupTime).getMinutes());
+
+      const durationMs = pickup - dropOff;
+      const totalHours = Math.ceil(durationMs / (1000 * 60 * 60));
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
+
+      setDuration({ days, hours });  // <-- new state
+        }
+    }, []);
+
 
   return (
     <div>
@@ -64,13 +89,19 @@ export default function Page() {
         </h3>
       </div>
 
-      {filteredSlots.length > 0 ? (
+      {searching ? (
+        <LoadingCard text="Searching for Parking..." />
+      ) : filteredSlots.length > 0 ? (
         filteredSlots.map((slot) => (
           <Cardscmp
             key={slot.id}
             title={slot.ParkingName}
             details={slot.AvailableFacilities}
             price={slot.price_per_day}
+            pricePerHour={slot.Price_per_hour}  // <-- from backend
+            imageUrl={slot.imageUrl}
+            duration={duration}
+            setSearching={setSearching}
           />
         ))
       ) : (

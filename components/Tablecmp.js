@@ -143,8 +143,23 @@ const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete }) => {
     onDelete && onDelete(item);
   };
 
+  function formatDateTime(dateTimeString) {
+    if (!dateTimeString) return "";
+    const dateTime = new Date(dateTimeString);
+    return dateTime.toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+  }
+
+
+
 
   const renderCell = React.useCallback((item, columnKey) => {
+    if (columnKey === "FromDateTime" || columnKey === "ToDateTime") {
+      return formatDateTime(item[columnKey]);
+    }
+
     const cellValue = item[columnKey];
 
     switch (columnKey) {

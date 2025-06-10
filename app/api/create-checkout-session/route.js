@@ -6,6 +6,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function POST(request) {
   const body = await request.json();
+  const origin = request.headers.get("origin");
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -23,8 +24,8 @@ export async function POST(request) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
+      success_url: `${origin}/success`,
+      cancel_url: `${origin}/cancel`,
       metadata: {
         email: body.email,
         licensePlate: body.licensePlate,

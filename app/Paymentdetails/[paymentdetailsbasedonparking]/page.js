@@ -4,70 +4,173 @@ import React, { useEffect, useState } from "react";
 import { Card, CardBody, Button, Divider } from "@heroui/react";
 import { Input } from "@heroui/input";
 import Navbarcmp from "@/components/Navbar";
-import { useParams, useRouter } from "next/navigation"; // import useRouter
+import { useParams, useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-const countries = [
-  { code: "+44", label: "UK" },
-  { code: "+1", label: "USA" },
-  { code: "+91", label: "India" },
-  { code: "+61", label: "Australia" },
-];
+  const countries = [
+    { code: "+44", label: "UK" },
+    { code: "+1", label: "USA" },
+    { code: "+91", label: "India" },
+    { code: "+61", label: "Australia" },
+  ];
 
-function CheckoutForm({ formData, selectedParking }) {
+  function mergeDateTime(date, time) {
+    if (!date || !time) return null;
+
+    const d = new Date(date);
+    const t = new Date(time);
+
+    // Set the hours and minutes from time picker
+    d.setHours(t.getHours());
+    d.setMinutes(t.getMinutes());
+    d.setSeconds(0);
+    d.setMilliseconds(0);
+
+    return d;
+  }
+
+
+function formatDateTime(dateObj) {
+  if (!dateObj || isNaN(new Date(dateObj))) return "N/A";
+
+  const date = new Date(dateObj);
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
+
+
+function CheckoutForm({ formData, selectedParking, clientSecret, searchData, totalPrice }) {
   const stripe = useStripe();
   const elements = useElements();
-  const router = useRouter(); // instantiate router
+  const router = useRouter();
 
-  const handlePay = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!stripe || !elements) return;
 
-    try {
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          licensePlate: formData.licensePlate,
-          selectedParking,
-          amount: 5000,
-          productName: "Airport Parking",
-        }),
-      });
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: window.location.origin },
+      redirect: "if_required",
+    });
 
-      const session = await response.json();
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
-      const result = await stripe.redirectToCheckout({ sessionId: session.id });
+    if (paymentIntent.status === "succeeded") {
+      const fromDateTime = mergeDateTime(searchData?.dropOffDate, searchData?.dropOffTime);
+      const toDateTime = mergeDateTime(searchData?.pickupDate, searchData?.pickupTime);
 
-      if (result.error) {
-        alert(result.error.message);
-      } else {
-        // This else block rarely executes because redirectToCheckout usually redirects immediately
-        // But just in case, you can redirect manually:
-        router.push("/app/paymentsuccess");
+      const formatLocalISO = (date) => {
+        if (!date) return "";
+        const pad = (n) => n.toString().padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      };
+
+      // 🆕 Generate OrderId
+      let newOrderId = "";
+      try {
+        const bookingsRes = await fetch("/api/Todaysbooking", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        const bookings = await bookingsRes.json();
+
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        const prefix = `Simplepark-0${String(currentMonth).padStart(2, "0")}${currentYear}`;
+
+        const lastOrderNumbers = bookings
+          .map(b => b.OrderId)
+          .filter(id => id?.startsWith(prefix))
+          .map(id => parseInt(id?.slice(-2))) // assumes last 2 digits are order number
+          .filter(n => !isNaN(n))
+          .sort((a, b) => b - a);
+
+        const nextNumber = lastOrderNumbers.length > 0 ? lastOrderNumbers[0] + 1 : 1;
+        newOrderId = `${prefix}${String(nextNumber).padStart(2, "0")}`;
+      } catch (fetchError) {
+        console.warn("Failed to generate OrderId, fallback to default.");
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        newOrderId = `Simplepark-0${String(currentMonth).padStart(2, "0")}${currentYear}01`;
       }
-    } catch (error) {
-      alert("Payment failed. Please try again.");
+
+      // 🆕 Combine first and last name
+      const customerFullName = `${formData.firstName || ""} ${formData.lastName || ""}`.trim();
+
+      // 📝 Booking payload
+      const payload = {
+        Airport: searchData?.airport || 'Unknown',
+        CarNumber: formData.licensePlate || '',
+        createdAt: new Date().toISOString(),
+        CustomerEmail: formData.email || '',
+        CustomerPhone: `${formData.phoneCountry}${formData.phone}` || '',
+        CustomerName: customerFullName, // 🆕 Save full name
+        FromDateTime: fromDateTime ? formatLocalISO(fromDateTime) : '',
+        ToDateTime: toDateTime ? formatLocalISO(toDateTime) : '',
+        Location: searchData?.location || 'Unknown',
+        PaidAmount: totalPrice || 0,
+        ParkingName: selectedParking || 'N/A',
+        ParkingSlot: searchData?.selectedSlot || 'N/A',
+        PaymentMethod: 'Stripe',
+        Status: 'Confirmed',
+        OrderId: newOrderId, // 🆕 Save OrderId
+      };
+
+      try {
+        const res = await fetch("/api/Todaysbooking", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result?.error || "Booking save failed");
+
+        alert("Payment and booking successful!");
+        router.push("/success");
+      } catch (err) {
+        console.error("Booking API error:", err.message);
+        alert("Payment succeeded but booking failed.");
+      }
     }
   };
 
+
+
   return (
-    <Card className="mt-6 shadow-md">
-      <CardBody className="space-y-4">
-        <Button color="primary" className="w-full" onClick={handlePay}>
-          Pay £50 Now
-        </Button>
-      </CardBody>
-    </Card>
+    <form onSubmit={handleSubmit}>
+      <Card className="mt-6 shadow-md">
+        <CardBody className="space-y-4">
+          <PaymentElement />
+          <Button color="primary" className="w-full mt-4" type="submit" disabled={!stripe}>
+            Pay Now
+          </Button>
+        </CardBody>
+      </Card>
+    </form>
   );
 }
 
 export default function PaymentPage() {
   const params = useParams();
-  const selectedParking = decodeURIComponent(params?.selectedAirport || "London Luton Airport");
+  const router = useRouter();
+  const selectedParking = decodeURIComponent(params?.paymentdetailsbasedonparking || "London Luton Airport");
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -80,34 +183,56 @@ export default function PaymentPage() {
   });
 
   const [searchData, setSearchData] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [totalPrice, setTotalPrice] = useState(0);
+
+  useEffect(() => {
+    const storedDetails = sessionStorage.getItem("selectedParkingDetails");
+    if (storedDetails) {
+      try {
+        const parsed = JSON.parse(storedDetails);
+        setTotalPrice(parsed.totalPrice || 0);
+      } catch (error) {
+        console.error("Invalid parking details in session storage:", error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("parkingSearchData");
     if (stored) setSearchData(JSON.parse(stored));
   }, []);
 
+  useEffect(() => {
+    if (!totalPrice) return;
+
+    fetch("/api/create-payment-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: formData.email,
+        licensePlate: formData.licensePlate,
+        selectedParking,
+        amount: Math.round(totalPrice * 100),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+        }
+      });
+  }, [totalPrice, formData.email, formData.licensePlate, selectedParking]);
+
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
   };
-
-  const formatDateTime = (date) =>
-    date
-      ? new Date(date).toLocaleString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        })
-      : "N/A";
 
   return (
     <div className="bg-blue-400">
       <Navbarcmp />
       <main className="px-4 md:px-16 py-8 bg-white min-h-screen">
         <div className="flex flex-col lg:flex-row gap-10">
-          {/* Left: Form Section */}
           <section className="w-full lg:w-2/3 space-y-8">
             <Card className="shadow-md">
               <CardBody className="space-y-6">
@@ -136,35 +261,32 @@ export default function PaymentPage() {
               </CardBody>
             </Card>
 
-            <Elements stripe={stripePromise}>
-              <CheckoutForm formData={formData} selectedParking={selectedParking} />
-            </Elements>
+            {clientSecret && (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <CheckoutForm
+                  formData={formData}
+                  selectedParking={selectedParking}
+                  clientSecret={clientSecret}
+                  searchData={searchData}
+                  totalPrice={totalPrice}
+                />
+              </Elements>
+            )}
           </section>
 
-          {/* Right: Booking Summary */}
           <aside className="w-full lg:w-1/3">
             <Card className="shadow-md">
               <CardBody className="space-y-4">
                 <h3 className="text-lg font-semibold">Booking Summary</h3>
                 <Divider />
                 <div className="text-sm space-y-2">
-                  <p>
-                    <strong>Airport:</strong> {searchData?.airport || "Not selected"}
-                  </p>
-                  <p>
-                    <strong>Parking:</strong> {selectedParking}
-                  </p>
-                  <p>
-                    <strong>Exit:</strong> {formatDateTime(searchData?.dropOffDate)}
-                  </p>
-                  <p>
-                    <strong>Entry:</strong> {formatDateTime(searchData?.pickupDate)}
-                  </p>
-                  <p>
-                    <strong>Booking Fee:</strong> £0
-                  </p>
+                  <p><strong>Airport:</strong> {searchData?.airport || "Not selected"}</p>
+                  <p><strong>Parking:</strong> {selectedParking}</p>
+                  <p><strong>From:</strong> {formatDateTime(mergeDateTime(searchData?.dropOffDate, searchData?.dropOffTime))}</p>
+                  <p><strong>To:</strong> {formatDateTime(mergeDateTime(searchData?.pickupDate, searchData?.pickupTime))}</p>
+                  <p><strong>Booking Fee:</strong> £0</p>
                   <Divider />
-                  <p className="text-lg font-bold">Total: £50</p>
+                  <p className="text-lg font-bold">Total : £{totalPrice?.toFixed(2) || "0.00"}</p>
                 </div>
               </CardBody>
             </Card>

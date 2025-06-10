@@ -5,7 +5,7 @@ import Navbarcmp from '@/components/Navbar';
 import Parkingsearchcmp from '@/components/parkingsearch';
 import { Image } from '@heroui/react';
 import { useRouter } from 'next/navigation';
-
+import LoadingCard from '@/components/Loading';
 
 const Homepage = () => {
   const [airports, setAirports] = useState([]);
@@ -16,6 +16,7 @@ const Homepage = () => {
   const [pickupTime, setPickupTime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
+  const [searching, setSearching] = useState(false); // NEW state
   const [errors, setErrors] = useState({
     airport: '',
     dropOff: '',
@@ -41,30 +42,43 @@ const Homepage = () => {
     fetchAirports();
   }, []);
 
-  const searchclick = ()=>{
-    if (!selectedAirport) {
-      console.warn("No airport selected.");
-      return;
-    }
+  const searchclick = () => {
+    const now = new Date();
+    const errorsTemp = {};
 
-      const searchData = {
-    airport: selectedAirport,
-    dropOffDate,
-    dropOffTime,
-    pickupDate,
-    pickupTime,
+    if (!selectedAirport) errorsTemp.airport = "Please select an airport.";
+    if (!dropOffDate || !dropOffTime) errorsTemp.dropOff = "Please fill Drop-off Date and Time.";
+    if (!pickupDate || !pickupTime) errorsTemp.pickup = "Please fill Pick-up Date and Time.";
+    if (pickupDate <= now) errorsTemp.pickup = "Pick-up must be in the future.";
+    if (pickupDate < dropOffDate) errorsTemp.pickupBeforeDropOff = "Pick-up cannot be before Drop-off.";
+
+    setErrors(errorsTemp);
+
+    if (Object.keys(errorsTemp).length > 0) return;
+
+    setSearching(true);
+
+    const searchData = {
+      airport: selectedAirport,
+      dropOffDate,
+      dropOffTime,
+      pickupDate,
+      pickupTime,
+    };
+
+    sessionStorage.setItem('parkingSearchData', JSON.stringify(searchData));
+
+    setTimeout(() => {
+      router.push(`/parking-availability/${selectedAirport}`);
+    }, 1500); // Simulate 1.5s loading
   };
-
-  sessionStorage.setItem('parkingSearchData', JSON.stringify(searchData));
-
-  router.push(`/parking-availability/${selectedAirport}`);
-  }
 
   return (
     <div className='w-full'>
       <div className='w-full bg-blue-400 pt-5'>
         <Navbarcmp />
       </div>
+
       <div>
         <div>
           <Image
@@ -74,6 +88,7 @@ const Homepage = () => {
             src="https://images.unsplash.com/photo-1629238727881-cdc61062fba1?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
           />
         </div>
+
         <div className="absolute top-[25%] md:top-[40%] left-0 w-full px-10 z-10 flex flex-col md:flex-row items-center justify-center gap-6">
           <div className="w-full md:w-1/2 text-center md:text-left">
             <p className="text-white text-2xl lg:text-4xl font-semibold">
@@ -82,25 +97,29 @@ const Homepage = () => {
               <span className="text-base lg:text-3xl text-yellow-400">Starting from £19</span>
             </p>
           </div>
-          <div className="w-full md:w-1/2">
-            <Parkingsearchcmp
-              airports={airports}
-              selectedAirport={selectedAirport}
-              setSelectedAirport={setSelectedAirport}
-              dropOffDate={dropOffDate}
-              setDropOffDate={setDropOffDate}
-              dropOffTime={dropOffTime}
-              setDropOffTime={setDropOffTime}
-              pickupDate={pickupDate}
-              setPickupDate={setPickupDate}
-              pickupTime={pickupTime}
-              setPickupTime={setPickupTime}
-              loading={loading}
-              hasMounted={hasMounted}
-              errors={errors}
-              setErrors={setErrors}
-              searchonclick = {searchclick}
-            />
+          <div className="w-full md:w-1/2 bg-transparent">
+            {searching ? (
+              <LoadingCard text="Searching for Parking..." />
+            ) : (
+              <Parkingsearchcmp
+                airports={airports}
+                selectedAirport={selectedAirport}
+                setSelectedAirport={setSelectedAirport}
+                dropOffDate={dropOffDate}
+                setDropOffDate={setDropOffDate}
+                dropOffTime={dropOffTime}
+                setDropOffTime={setDropOffTime}
+                pickupDate={pickupDate}
+                setPickupDate={setPickupDate}
+                pickupTime={pickupTime}
+                setPickupTime={setPickupTime}
+                loading={loading}
+                hasMounted={hasMounted}
+                errors={errors}
+                setErrors={setErrors}
+                searchonclick={searchclick}
+              />
+            )}
           </div>
         </div>
       </div>
