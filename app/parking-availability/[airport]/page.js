@@ -78,13 +78,12 @@ export default function Page() {
 
   return (
     <div>
-      <div className="w-full bg-blue-400 pt-5">
+      <div className="w-full bg-blue-400 pt-5 ">
         <Navbarcmp />
       </div>
 
-      <div className="ml-10 md:ml-20 mt-4 mb-4">
+      <div className="flex justify-center pt-4 pb-4 ">
         <h3 className="text-2xl">
-          Choose your Parking:{" "}
           <span className="font-bold text-blue-800">{selectedAirport}</span>
         </h3>
       </div>

@@ -73,7 +73,7 @@ export default function Parkingsearchcmp({
             <DatePicker
               selected={dropOffDate}
               onChange={setDropOffDate}
-              minDate={"NA"}
+              minDate={new Date()}
               placeholderText="Select date"
               className="w-full p-2 border border-gray-300 rounded-md"
               dateFormat="dd/MM/yyyy"

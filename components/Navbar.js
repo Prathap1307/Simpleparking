@@ -17,19 +17,22 @@ import {
   DropdownMenu,
 
 } from "@heroui/react";
+import Image from "next/image";
+import NextLink from "next/link";
+
 
 export const AcmeLogo = () => {
   return (
-    <svg fill="none" height="36" viewBox="0 0 32 32" width="36">
-      <path
-        clipRule="evenodd"
-        d="M17.6482 10.1305L15.8785 7.02583L7.02979 22.5499H10.5278L17.6482 10.1305ZM19.8798 14.0457L18.11 17.1983L19.394 19.4511H16.8453L15.1056 22.5499H24.7272L19.8798 14.0457Z"
-        fill="currentColor"
-        fillRule="evenodd"
-      />
-    </svg>
+    <Image
+      src="/logo.png" // Update this path
+      alt="Simple Parking Logo"
+      width={36}
+      height={36}
+      className="mr-2"
+    />
   );
 };
+
 
 export default function Navbarcmp() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -269,37 +272,26 @@ const Scale = ({fill = "currentColor", size, height, width, ...props}) => {
         />
       </NavbarContent>
 
-      <NavbarContent className="sm:hidden ">
-        <NavbarBrand>
-          <AcmeLogo />
-          <p className="font-bold text-inherit">Simple parking</p>
-        </NavbarBrand>
-      </NavbarContent>
-
       {/* Desktop Nav */}
       <NavbarContent className="hidden sm:flex gap-4">
-        <NavbarBrand className=" -ml-30 mr-30">
-          <AcmeLogo />
-          <p className="font-bold text-inherit">Simple parking</p>
-        </NavbarBrand>
+          <NavbarBrand className=" -ml-30 mr-30">
+            <Link href="/" className="flex items-center cursor-pointer hover:opacity-80 transition">
+              <AcmeLogo />
+              <p className="ml-1 text-black">Simple Parking</p>
+            </Link>
+          </NavbarBrand>
         <NavbarItem isActive>
-          <Link aria-current="page" className=" hover:text-lg " href="#">
+          <Link aria-current="page" className=" hover:text-lg text-black" href="#">
             Home
           </Link>
         </NavbarItem>
         <Dropdown>
           <NavbarItem>
             <DropdownTrigger>
-              <Button
-                disableRipple
-                className="p-0 bg-transparent data-[hover=true]:bg-transparent text-inherit hover:text-lg"
-                endContent={icons.chevron}
-                radius="sm"
-                variant="light"
-
-              >
+              <span className="flex items-center gap-1 text-black font-medium hover:text-lg cursor-pointer">
                 Airport Parkings
-              </Button>
+                {icons.chevron}
+              </span>
             </DropdownTrigger>
           </NavbarItem>
           <DropdownMenu
