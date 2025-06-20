@@ -16,9 +16,9 @@ export const metadata = {
   title: "Simple Parking",
   description: "Parking made simple",
   icons: {
-    icon: "/favicon.svg", // Using ICO format for reliability
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg", // Optional but recommended
+    icon: "/logo.svg", // Using ICO format for reliability
+    shortcut: "/logo.svg",
+    apple: "/logo.svg", // Optional but recommended
   },
 };
 

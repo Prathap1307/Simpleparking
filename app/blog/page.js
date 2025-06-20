@@ -1,0 +1,449 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { Image } from '@heroui/react';
+import { useRouter } from 'next/navigation';
+
+
+const MagneticButton = ({ children, onClick = () => {} }) => {
+  const ref = useRef(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [hovering, setHovering] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    
+    const handleMouseMove = (e) => {
+      const rect = ref.current.getBoundingClientRect();
+      setPosition({
+        x: e.clientX - rect.left - rect.width / 2,
+        y: e.clientY - rect.top - rect.height / 2
+      });
+    };
+    
+    const handleMouseEnter = () => setHovering(true);
+    const handleMouseLeave = () => {
+      setHovering(false);
+      setPosition({ x: 0, y: 0 });
+    };
+    
+    ref.current.addEventListener('mousemove', handleMouseMove);
+    ref.current.addEventListener('mouseenter', handleMouseEnter);
+    ref.current.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      if (ref.current) {
+        ref.current.removeEventListener('mousemove', handleMouseMove);
+        ref.current.removeEventListener('mouseenter', handleMouseEnter);
+        ref.current.removeEventListener('mouseleave', handleMouseLeave);
+      }
+    };
+  }, []);
+
+  const handleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick(); // This is now safe because we provided a default function
+  };
+
+  return (
+    <motion.button
+      ref={ref}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      className="relative overflow-hidden bg-indigo-600 text-white px-6 py-3 rounded-full font-medium"
+      whileTap={{ scale: 0.95 }}
+    >
+      <motion.span 
+        className="relative z-10"
+        animate={{
+          x: position.x * 0.2,
+          y: position.y * 0.2
+        }}
+        transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+      >
+        {children}
+      </motion.span>
+      <motion.div 
+        className="absolute inset-0 bg-indigo-700 rounded-full"
+        initial={{ scale: 0 }}
+        animate={{ 
+          scale: hovering ? 1 : 0,
+          x: position.x * 0.4,
+          y: position.y * 0.4
+        }}
+        transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+      />
+    </motion.button>
+  );
+};
+
+const BlogCard = ({ title, excerpt, date, category, imageUrl, index, onReadMore }) => {
+  const handleClick = (e) => {
+    e.preventDefault();
+    onReadMore();
+  };
+
+  return (
+    <motion.article
+      className="group relative overflow-hidden rounded-2xl bg-gray-900 border border-gray-800 hover:border-indigo-500 transition-all"
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.6, delay: index * 0.1 }}
+      whileHover={{ y: -10 }}
+    >
+      <div className="relative h-64 overflow-hidden">
+        <Image
+          src={imageUrl}
+          alt={title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          radius="none"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent" />
+        <div className="absolute top-4 right-4">
+          <span className="px-3 py-1 bg-indigo-600/90 text-white text-xs font-semibold rounded-full backdrop-blur-sm">
+            {category}
+          </span>
+        </div>
+      </div>
+      <div className="p-6">
+        <div className="flex items-center text-sm text-gray-400 mb-2">
+          <span>{date}</span>
+          <span className="mx-2">•</span>
+          <span>5 min read</span>
+        </div>
+        <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
+        <p className="text-gray-400 mb-4">{excerpt}</p>
+        <button 
+          onClick={handleClick}
+          className="relative overflow-hidden bg-indigo-600 text-white px-6 py-3 rounded-full font-medium"
+        >
+          Read More
+        </button>
+      </div>
+      <div className="absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full filter blur-3xl"></div>
+      </div>
+    </motion.article>
+  );
+};
+
+const CategoryFilter = ({ activeCategory, setActiveCategory }) => {
+  const categories = ['All', 'Travel Tips', 'Airport Guides', 'Parking Hacks', 'Company News'];
+  
+  return (
+    <div className="flex flex-wrap gap-3 mb-12">
+      {categories.map((category) => (
+        <motion.button
+          key={category}
+          onClick={() => setActiveCategory(category)}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            activeCategory === category
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {category}
+        </motion.button>
+      ))}
+    </div>
+  );
+};
+
+const BlogHero = () => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"]
+  });
+  
+  const yBg = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const yText = useTransform(scrollYProgress, [0, 1], [0, 50]);
+
+  return (
+    <div ref={ref} className="relative h-[80vh] overflow-hidden">
+      <motion.div 
+        className="absolute inset-0"
+        style={{ y: yBg }}
+      >
+        <Image
+          src="https://images.unsplash.com/photo-1452421822248-d4c2b47f0c81?q=80&w=2670&auto=format&fit=crop"
+          alt="Blog hero"
+          className="w-full h-full object-cover"
+          radius="none"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-900/90 via-gray-900/50 to-gray-900/90" />
+      </motion.div>
+      
+      <motion.div 
+        className="absolute inset-0 flex items-center justify-center text-center px-6"
+        style={{ y: yText }}
+      >
+        <div className="max-w-4xl">
+          <motion.h1 
+            className="text-4xl md:text-6xl font-bold text-white mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            ParkEase Blog
+          </motion.h1>
+          <motion.p 
+            className="text-xl text-gray-300 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            Discover expert travel tips, airport guides, and parking hacks to make your journeys smoother
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+          >
+            <MagneticButton>Explore Articles</MagneticButton>
+          </motion.div>
+        </div>
+      </motion.div>
+      
+      <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-gray-900 to-transparent" />
+    </div>
+  );
+};
+
+const FeaturedPost = ({ onReadMore }) => {
+  const [hovered, setHovered] = useState(false);
+
+  const handleReadMore = onReadMore || (() => {});
+  
+  return (
+    <section className="py-16 px-6">
+      <div className="max-w-7xl mx-auto">
+        <motion.h2 
+          className="text-3xl font-bold text-white mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          Featured Article
+        </motion.h2>
+        
+        <motion.div 
+          className="relative rounded-3xl overflow-hidden border border-gray-800"
+          onHoverStart={() => setHovered(true)}
+          onHoverEnd={() => setHovered(false)}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            <div className="relative h-64 lg:h-auto">
+              <Image
+                src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2670&auto=format&fit=crop"
+                alt="Featured post"
+                className="w-full h-full object-cover"
+                radius="none"
+              />
+              <AnimatePresence>
+                {hovered && (
+                  <motion.div 
+                    className="absolute inset-0 bg-indigo-500/20"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
+            <div className="p-8 lg:p-12 bg-gray-900">
+              <div className="flex items-center text-sm text-gray-400 mb-4">
+                <span>June 15, 2023</span>
+                <span className="mx-2">•</span>
+                <span className="px-3 py-1 bg-indigo-600/20 text-indigo-400 rounded-full">Travel Tips</span>
+              </div>
+              <h3 className="text-2xl lg:text-3xl font-bold text-white mb-4">
+                10 Essential Airport Parking Hacks Every Traveler Should Know
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Discover insider tips to save money, time, and stress when parking at airports. From secret discounts to optimal parking strategies, we've got you covered for your next trip.
+              </p>
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center mr-4">
+                  <span className="text-white font-bold">J</span>
+                </div>
+                <div>
+                  <p className="text-white font-medium">John Parker</p>
+                  <p className="text-xs text-gray-500">Travel Expert</p>
+                </div>
+              </div>
+              <motion.div
+                className="absolute bottom-8 right-8"
+                whileHover={{ scale: 1.1 }}
+              >
+                <MagneticButton onClick={onReadMore}>Read Full Article</MagneticButton>
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+const BlogPage = () => {
+  const [activeCategory, setActiveCategory] = useState('All');
+  const router = useRouter();
+  
+  // Sample blog data
+  const blogPosts = [
+    {
+      id: 1,
+      title: "How to Find the Cheapest Airport Parking During Peak Season",
+      excerpt: "Learn strategies to secure affordable parking even during busy travel periods.",
+      date: "June 10, 2023",
+      category: "Parking Hacks",
+      imageUrl: "https://images.unsplash.com/photo-1470004914212-05527e49370b?q=80&w=2574&auto=format&fit=crop"
+    },
+    {
+      id: 2,
+      title: "Heathrow Airport Parking: The Ultimate Guide",
+      excerpt: "Everything you need to know about parking options at London's busiest airport.",
+      date: "May 28, 2023",
+      category: "Airport Guides",
+      imageUrl: "https://images.unsplash.com/photo-1556388158-158ea5ccacbd?q=80&w=2670&auto=format&fit=crop"
+    },
+    {
+      id: 3,
+      title: "The Future of Smart Parking: What to Expect in 2024",
+      excerpt: "Exploring upcoming technologies that will revolutionize how we park at airports.",
+      date: "May 15, 2023",
+      category: "Company News",
+      imageUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2670&auto=format&fit=crop"
+    },
+    {
+      id: 4,
+      title: "Travel Light: Packing Tips for Stress-Free Airport Experience",
+      excerpt: "How packing efficiently can save you time and hassle at security and boarding.",
+      date: "April 30, 2023",
+      category: "Travel Tips",
+      imageUrl: "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?q=80&w=2670&auto=format&fit=crop"
+    },
+    {
+      id: 5,
+      title: "Off-Site vs On-Site Airport Parking: Pros and Cons",
+      excerpt: "A detailed comparison to help you decide which parking option suits your needs best.",
+      date: "April 18, 2023",
+      category: "Parking Hacks",
+      imageUrl: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=2670&auto=format&fit=crop"
+    },
+    {
+      id: 6,
+      title: "ParkEase Launches New Rewards Program for Frequent Travelers",
+      excerpt: "Earn points on every booking and redeem for free parking and exclusive benefits.",
+      date: "April 5, 2023",
+      category: "Company News",
+      imageUrl: "https://images.unsplash.com/photo-1552581234-26160f608093?q=80&w=2670&auto=format&fit=crop"
+    }
+  ];
+
+  const handleReadMore = (postId) => {
+    router.push(`/blog/${postId}`);
+  };
+
+  const filteredPosts = activeCategory === 'All' 
+    ? blogPosts 
+    : blogPosts.filter(post => post.category === activeCategory);
+
+
+  return (
+    <div className="bg-gray-900 text-white">
+      <BlogHero />
+      
+      <FeaturedPost onReadMore={() => handleReadMore(1)} /> 
+      
+      <section className="py-16 px-6">
+        <div className="max-w-7xl mx-auto">
+          <CategoryFilter 
+            activeCategory={activeCategory} 
+            setActiveCategory={setActiveCategory} 
+          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredPosts.map((post, index) => (
+              <BlogCard key={post.id} index={index} {...post} onReadMore={() => handleReadMore(post.id)} />
+            ))}
+          </div>
+          
+          {filteredPosts.length === 0 && (
+            <motion.div 
+              className="text-center py-16"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <h3 className="text-xl font-medium text-gray-400">No articles found in this category</h3>
+            </motion.div>
+          )}
+          
+          <motion.div 
+            className="flex justify-center mt-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <MagneticButton>Load More Articles</MagneticButton>
+          </motion.div>
+        </div>
+      </section>
+      
+      <section className="py-16 px-6 bg-gray-800/50">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.h2 
+            className="text-3xl font-bold text-white mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            Stay Updated with Travel Tips
+          </motion.h2>
+          <motion.p 
+            className="text-gray-400 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            Subscribe to our newsletter and receive the latest parking deals and travel guides directly to your inbox
+          </motion.p>
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <input 
+              type="email" 
+              placeholder="Your email address" 
+              className="flex-grow px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white placeholder-gray-400"
+            />
+            <MagneticButton>Subscribe</MagneticButton>
+          </motion.div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default BlogPage;

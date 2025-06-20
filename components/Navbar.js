@@ -1,364 +1,189 @@
 'use client';
 
-import React from "react";
-import {
-  Navbar,
-  NavbarBrand,
-  NavbarMenuToggle,
-  NavbarMenuItem,
-  NavbarMenu,
-  NavbarContent,
-  NavbarItem,
-  Link,
-  Button,
-  DropdownItem,
-  DropdownTrigger,
-  Dropdown,
-  DropdownMenu,
-
-} from "@heroui/react";
-import Image from "next/image";
-import NextLink from "next/link";
-
-
-export const AcmeLogo = () => {
-  return (
-    <Image
-      src="/logo.png" // Update this path
-      alt="Simple Parking Logo"
-      width={36}
-      height={36}
-      className="mr-2"
-    />
-  );
-};
-
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbarcmp() {
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeHover, setActiveHover] = useState(null);
 
-  const menuItems = [
-    "Profile",
-    "Dashboard",
-    "Activity",
-    "Analytics",
-    "System",
-    "Deployments",
-    "My Settings",
-    "Team Settings",
-    "Help & Feedback",
-    "Log Out",
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: 'Home', href: '/' },
+    { name: 'Airports', href: '#Airports' },
+    { name: 'Blogs', href: '/blog' },
+    { name: 'Help', href: '/help' },
   ];
 
-
-
-  
-const ChevronDown = ({fill, size, height, width, ...props}) => {
   return (
-    <svg
-      fill="none"
-      height={size || height || 24}
-      viewBox="0 0 24 24"
-      width={size || width || 24}
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="m19.92 8.95-6.52 6.52c-.77.77-2.03.77-2.8 0L4.08 8.95"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeMiterlimit={10}
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-};
-
-const Lock = ({fill, size, height, width, ...props}) => {
-  const color = fill;
-
-  return (
-    <svg
-      height={size || height || 24}
-      viewBox="0 0 24 24"
-      width={size || width || 24}
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <g transform="translate(3.5 2)">
-        <path
-          d="M9.121,6.653V4.5A4.561,4.561,0,0,0,0,4.484V6.653"
-          fill="none"
-          stroke={color}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeMiterlimit="10"
-          strokeWidth={1.5}
-          transform="translate(3.85 0.75)"
-        />
-        <path
-          d="M.5,0V2.221"
-          fill="none"
-          stroke={color}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeMiterlimit="10"
-          strokeWidth={1.5}
-          transform="translate(7.91 12.156)"
-        />
-        <path
-          d="M7.66,0C1.915,0,0,1.568,0,6.271s1.915,6.272,7.66,6.272,7.661-1.568,7.661-6.272S13.4,0,7.66,0Z"
-          fill="none"
-          stroke={color}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeMiterlimit="10"
-          strokeWidth={1.5}
-          transform="translate(0.75 6.824)"
-        />
-      </g>
-    </svg>
-  );
-};
-
-const Activity = ({fill, size, height, width, ...props}) => {
-  return (
-    <svg
-      height={size || height || 24}
-      viewBox="0 0 24 24"
-      width={size || width || 24}
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <g
-        fill="none"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeMiterlimit={10}
-        strokeWidth={1.5}
-      >
-        <path d="M6.918 14.854l2.993-3.889 3.414 2.68 2.929-3.78" />
-        <path d="M19.668 2.35a1.922 1.922 0 11-1.922 1.922 1.921 1.921 0 011.922-1.922z" />
-        <path d="M20.756 9.269a20.809 20.809 0 01.194 3.034c0 6.938-2.312 9.25-9.25 9.25s-9.25-2.312-9.25-9.25 2.313-9.25 9.25-9.25a20.931 20.931 0 012.983.187" />
-      </g>
-    </svg>
-  );
-};
-
-const Flash = ({fill = "currentColor", size, height, width, ...props}) => {
-  return (
-    <svg
-      fill="none"
-      height={size || height}
-      viewBox="0 0 24 24"
-      width={size || width}
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M6.09 13.28h3.09v7.2c0 1.68.91 2.02 2.02.76l7.57-8.6c.93-1.05.54-1.92-.87-1.92h-3.09v-7.2c0-1.68-.91-2.02-2.02-.76l-7.57 8.6c-.92 1.06-.53 1.92.87 1.92Z"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeMiterlimit={10}
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-};
-
-const Server = ({fill = "currentColor", size, height, width, ...props}) => {
-  return (
-    <svg
-      fill="none"
-      height={size || height}
-      viewBox="0 0 24 24"
-      width={size || width}
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M19.32 10H4.69c-1.48 0-2.68-1.21-2.68-2.68V4.69c0-1.48 1.21-2.68 2.68-2.68h14.63C20.8 2.01 22 3.22 22 4.69v2.63C22 8.79 20.79 10 19.32 10ZM19.32 22H4.69c-1.48 0-2.68-1.21-2.68-2.68v-2.63c0-1.48 1.21-2.68 2.68-2.68h14.63c1.48 0 2.68 1.21 2.68 2.68v2.63c0 1.47-1.21 2.68-2.68 2.68ZM6 5v2M10 5v2M6 17v2M10 17v2M14 6h4M14 18h4"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-};
-
-const TagUser = ({fill = "currentColor", size, height, width, ...props}) => {
-  return (
-    <svg
-      fill="none"
-      height={size || height}
-      viewBox="0 0 24 24"
-      width={size || width}
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M18 18.86h-.76c-.8 0-1.56.31-2.12.87l-1.71 1.69c-.78.77-2.05.77-2.83 0l-1.71-1.69c-.56-.56-1.33-.87-2.12-.87H6c-1.66 0-3-1.33-3-2.97V4.98c0-1.64 1.34-2.97 3-2.97h12c1.66 0 3 1.33 3 2.97v10.91c0 1.63-1.34 2.97-3 2.97Z"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeMiterlimit={10}
-        strokeWidth={1.5}
-      />
-      <path
-        d="M12 10a2.33 2.33 0 1 0 0-4.66A2.33 2.33 0 0 0 12 10ZM16 15.66c0-1.8-1.79-3.26-4-3.26s-4 1.46-4 3.26"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-};
-
-const Scale = ({fill = "currentColor", size, height, width, ...props}) => {
-  return (
-    <svg
-      fill="none"
-      height={size || height}
-      viewBox="0 0 24 24"
-      width={size || width}
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <path
-        d="M9 22h6c5 0 7-2 7-7V9c0-5-2-7-7-7H9C4 2 2 4 2 9v6c0 5 2 7 7 7ZM18 6 6 18"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-      <path
-        d="M18 10V6h-4M6 14v4h4"
-        stroke={fill}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-      />
-    </svg>
-  );
-};
-
-    const icons = {
-    chevron: <ChevronDown fill="currentColor" size={16} />,
-    scale: <Scale className="text-warning" fill="currentColor" size={30} />,
-    lock: <Lock className="text-success" fill="currentColor" size={30} />,
-    activity: <Activity className="text-secondary" fill="currentColor" size={30} />,
-    flash: <Flash className="text-primary" fill="currentColor" size={30} />,
-    server: <Server className="text-success" fill="currentColor" size={30} />,
-    user: <TagUser className="text-danger" fill="currentColor" size={30} />,
-  };
-
-  return (
-    <Navbar
-      isBordered
-      shouldHideOnScroll
-      isMenuOpen={isMenuOpen}
-      onMenuOpenChange={setIsMenuOpen}
-      className=" p-2 py-4"
-    >
-      {/* Mobile toggle + logo */}
-      <NavbarContent className="sm:hidden" justify="start">
-        <NavbarMenuToggle
-          aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-        />
-      </NavbarContent>
-
-      {/* Desktop Nav */}
-      <NavbarContent className="hidden sm:flex gap-4">
-          <NavbarBrand className=" -ml-30 mr-30">
-            <Link href="/" className="flex items-center cursor-pointer hover:opacity-80 transition">
-              <AcmeLogo />
-              <p className="ml-1 text-black">Simple Parking</p>
-            </Link>
-          </NavbarBrand>
-        <NavbarItem isActive>
-          <Link aria-current="page" className=" hover:text-lg text-black" href="#">
-            Home
-          </Link>
-        </NavbarItem>
-        <Dropdown>
-          <NavbarItem>
-            <DropdownTrigger>
-              <span className="flex items-center gap-1 text-black font-medium hover:text-lg cursor-pointer">
-                Airport Parkings
-                {icons.chevron}
-              </span>
-            </DropdownTrigger>
-          </NavbarItem>
-          <DropdownMenu
-            aria-label="ACME features"
-            itemClasses={{
-              base: "gap-4",
-            }}
+    <header className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-gray-900/90 backdrop-blur-md py-2 border-b border-gray-800' : 'bg-transparent py-4'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center">
+          {/* Logo with animation */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, type: 'spring' }}
+            className="flex items-center"
           >
-            <DropdownItem
-              key="autoscaling"
-              description="ACME scales apps based on demand and load"
-              startContent={icons.flash}
-            >
-              Autoscaling
-            </DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
-        <NavbarItem>
-          <Link color="foreground" href="#" className=" hover:text-lg">
-            Book Now
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link color="foreground" href="#" className=" hover:text-lg">
-            About us
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link color="foreground" href="#" className=" hover:text-lg">
-            Blogs
-          </Link>
-        </NavbarItem>
-      </NavbarContent>
-
-      {/* Right side */}
-      <NavbarContent justify="end">
-        <NavbarItem className="hidden lg:flex">
-          <Link className=" hover:text-xl text-lg" href="#">Manage booking</Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Button as={Link} color="warning" href="#" variant="flat" className=" hover:text-lg">
-            Help
-          </Button>
-        </NavbarItem>
-      </NavbarContent>
-
-      {/* Mobile Menu */}
-      <NavbarMenu>
-        {menuItems.map((item, index) => (
-          <NavbarMenuItem key={`${item}-${index}`}>
-            <Link
-              className="w-full"
-              color={
-                index === 2
-                  ? "warning"
-                  : index === menuItems.length - 1
-                  ? "danger"
-                  : "foreground"
-              }
-              href="#"
-              size="lg"
-            >
-              {item}
+            <Link href="/" className="flex items-center space-x-2 magnetic">
+              <motion.div 
+                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${scrolled ? 'bg-gradient-to-br from-indigo-600 to-purple-600' : 'bg-gradient-to-br from-indigo-500 to-purple-500'}`}
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <span className="text-xl font-bold text-white">S</span>
+              </motion.div>
+              <motion.span 
+                className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${scrolled ? 'from-indigo-400 to-purple-400' : 'from-indigo-300 to-purple-300'}`}
+                whileHover={{ scale: 1.05 }}
+              >
+                Simple parking  
+              </motion.span>
             </Link>
-          </NavbarMenuItem>
-        ))}
-      </NavbarMenu>
-    </Navbar>
+          </motion.div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-1">
+            {navLinks.map((link, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1, type: 'spring' }}
+                onHoverStart={() => setActiveHover(index)}
+                onHoverEnd={() => setActiveHover(null)}
+                className="relative"
+              >
+                <Link
+                  href={link.href}
+                  className={`relative px-4 py-3 text-sm font-medium transition-colors magnetic ${
+                    scrolled ? 'text-gray-300 hover:text-white' : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+                
+                {/* Animated underline */}
+                {activeHover === index && (
+                  <motion.div 
+                    className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400"
+                    layoutId="navHover"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    exit={{ scaleX: 0 }}
+                    transition={{ duration: 0.3, type: 'spring', bounce: 0.25 }}
+                  />
+                )}
+              </motion.div>
+            ))}
+            
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: navLinks.length * 0.1, type: 'spring' }}
+              className="ml-4"
+            >
+              <Link
+                href="/login"
+                className={`px-5 py-2.5 rounded-full font-medium transition-all relative overflow-hidden group ${
+                  scrolled ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white' : 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white'
+                }`}
+              >
+                <span className="relative z-10">Manage Booking</span>
+                <span className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+              </Link>
+            </motion.div>
+          </nav>
+
+          {/* Mobile menu button - futuristic design */}
+          <div className="md:hidden flex items-center">
+            <motion.button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className={`p-2 rounded-full focus:outline-none ${
+                scrolled ? 'bg-gray-800 text-white' : 'bg-gray-800/80 text-white'
+              }`}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </motion.button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Navigation - Enhanced with animations */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="md:hidden overflow-hidden"
+          >
+            <div className={`px-4 pt-2 pb-6 ${scrolled ? 'bg-gray-900/95 backdrop-blur-md' : 'bg-gray-900/95 backdrop-blur-md'}`}>
+              <motion.div 
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ staggerChildren: 0.1 }}
+                className="flex flex-col space-y-1"
+              >
+                {navLinks.map((link, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ y: -10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Link
+                      href={link.href}
+                      className={`block px-4 py-3 rounded-lg text-base font-medium transition-colors ${
+                        scrolled ? 'text-gray-300 hover:bg-gray-800 hover:text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {link.name}
+                    </Link>
+                  </motion.div>
+                ))}
+                <motion.div
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.3, delay: navLinks.length * 0.1 }}
+                  className="mt-2"
+                >
+                  <Link
+                    href="/login"
+                    className={`block px-4 py-3 rounded-lg text-base font-medium text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500 transition-all`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Manage Booking
+                  </Link>
+                </motion.div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
   );
 }

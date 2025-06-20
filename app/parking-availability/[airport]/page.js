@@ -1,12 +1,15 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import Cardscmp from '@/components/Cardscmp';
-import Navbarcmp from '@/components/Navbar';
+import { motion } from 'framer-motion';
+import Navbar from '@/components/Navbar';
 import LoadingCard from '@/components/Loading';
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import ParkingCard from '@/components/Cardscmp';
 
-export default function Page() {
+
+
+export default function ParkingAvailability() {
   const params = useParams();
   const selectedAirportRaw = params?.selectedAirport;
   const selectedAirport = decodeURIComponent(selectedAirportRaw || 'London Luton Airport');
@@ -14,13 +17,11 @@ export default function Page() {
   const [LocationsData, setLocationsData] = useState([]);
   const [ParkingslotData, setParkingslotData] = useState([]);
   const [filteredSlots, setFilteredSlots] = useState([]);
-  const [searching, setSearching] = useState(true); // Start as loading
-
+  const [searching, setSearching] = useState(true);
   const [duration, setDuration] = useState({ days: 0, hours: 0 });
 
-
   const fetchAllData = async () => {
-    setSearching(true); // Show loading
+    setSearching(true);
     try {
       const [locationsRes, parkingRes] = await Promise.all([
         fetch("/api/Locations"),
@@ -39,7 +40,7 @@ export default function Page() {
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
-      setSearching(false); // Hide loading
+      setSearching(false);
     }
   };
 
@@ -55,7 +56,7 @@ export default function Page() {
     setFilteredSlots(filtered);
   }, [ParkingslotData, selectedAirport]);
 
-    useEffect(() => {
+  useEffect(() => {
     const storedData = sessionStorage.getItem("parkingSearchData");
     if (storedData) {
       const { dropOffDate, dropOffTime, pickupDate, pickupTime } = JSON.parse(storedData);
@@ -71,43 +72,97 @@ export default function Page() {
       const days = Math.floor(totalHours / 24);
       const hours = totalHours % 24;
 
-      setDuration({ days, hours });  // <-- new state
-        }
-    }, []);
-
+      setDuration({ days, hours });
+    }
+  }, []);
 
   return (
-    <div>
-      <div className="w-full bg-blue-400 pt-5 ">
-        <Navbarcmp />
-      </div>
+    <div className="min-h-screen bg-gray-950">
+      <Navbar />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-30">
+        {/* Hero Section */}
+        <motion.div 
+          className="mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Available Parking at <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">{selectedAirport}</span>
+          </h1>
+          <p className="text-lg text-gray-400">
+            Select from our secure, affordable parking options
+          </p>
+        </motion.div>
 
-      <div className="flex justify-center pt-4 pb-4 ">
-        <h3 className="text-2xl">
-          <span className="font-bold text-blue-800">{selectedAirport}</span>
-        </h3>
-      </div>
+        {/* Duration Info */}
+        {duration.days > 0 || duration.hours > 0 ? (
+          <motion.div 
+            className="bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-800 p-4 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <div className="flex items-center">
+              <div className="p-3 bg-indigo-600/20 rounded-lg mr-4">
+                <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-400">Your Parking Duration</h3>
+                <p className="text-xl font-bold text-white">
+                  {duration.days > 0 ? `${duration.days} day${duration.days > 1 ? 's' : ''}` : ''}
+                  {duration.days > 0 && duration.hours > 0 ? ' and ' : ''}
+                  {duration.hours > 0 ? `${duration.hours} hour${duration.hours > 1 ? 's' : ''}` : ''}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
 
-      {searching ? (
-        <LoadingCard text="Searching for Parking..." />
-      ) : filteredSlots.length > 0 ? (
-        filteredSlots.map((slot) => (
-          <Cardscmp
-            key={slot.id}
-            title={slot.ParkingName}
-            details={slot.AvailableFacilities}
-            price={slot.price_per_day}
-            pricePerHour={slot.Price_per_hour}  // <-- from backend
-            imageUrl={slot.imageUrl}
-            duration={duration}
-            setSearching={setSearching}
-          />
-        ))
-      ) : (
-        <p className="text-center text-gray-600 mt-4">
-          No parking slots found for this location.
-        </p>
-      )}
+        {/* Parking Cards */}
+        {searching ? (
+          <LoadingCard text="Finding Available Parking..." />
+        ) : filteredSlots.length > 0 ? (
+          <div className="space-y-6">
+            {filteredSlots.map((slot, index) => (
+              <ParkingCard
+                key={slot.id}
+                title={slot.ParkingName}
+                details={slot.AvailableFacilities}
+                price={slot.price_per_day}
+                pricePerHour={slot.Price_per_hour}
+                imageUrl={slot.imageUrl}
+                duration={duration}
+                index={index}
+                setSearching={setSearching}
+              />
+            ))}
+          </div>
+        ) : (
+          <motion.div
+            className="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-800 p-8 text-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <svg className="w-12 h-12 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 className="text-xl font-bold text-white mb-2">No Parking Available</h3>
+            <p className="text-gray-400 mb-4">We couldn't find any parking slots for this location.</p>
+            <motion.button
+              className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full font-medium"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              Try Another Airport
+            </motion.button>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }

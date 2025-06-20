@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import Navbarcmp from '@/components/Navbar';
 import Parkingsearchcmp from '@/components/parkingsearch';
-import { Image } from '@heroui/react';
-import { useRouter } from 'next/navigation';
 import LoadingCard from '@/components/Loading';
+import { Image } from '@heroui/react';
 
 const Homepage = () => {
   const [airports, setAirports] = useState([]);
@@ -16,7 +17,8 @@ const Homepage = () => {
   const [pickupTime, setPickupTime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
-  const [searching, setSearching] = useState(false); // NEW state
+  const [searching, setSearching] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
   const [errors, setErrors] = useState({
     airport: '',
     dropOff: '',
@@ -24,7 +26,15 @@ const Homepage = () => {
     pickupBeforeDropOff: ''
   });
 
-  const router = useRouter(); 
+  const router = useRouter();
+
+  // Scroll to search function
+  const scrollToSearch = () => {
+    const searchSection = document.getElementById('Searchfrom');
+    if (searchSection) {
+      searchSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     setHasMounted(true);
@@ -53,11 +63,9 @@ const Homepage = () => {
     if (pickupDate < dropOffDate) errorsTemp.pickupBeforeDropOff = "Pick-up cannot be before Drop-off.";
 
     setErrors(errorsTemp);
-
     if (Object.keys(errorsTemp).length > 0) return;
 
     setSearching(true);
-
     const searchData = {
       airport: selectedAirport,
       dropOffDate,
@@ -70,60 +78,767 @@ const Homepage = () => {
 
     setTimeout(() => {
       router.push(`/parking-availability/${selectedAirport}`);
-    }, 1500); // Simulate 1.5s loading
+    }, 1500);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowIntro(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Parallax Section Component
+  const ParallaxSection = ({ children, speed = 1 }) => {
+    const ref = useRef(null);
+    const { scrollYProgress } = useScroll({
+      target: ref,
+      offset: ["start start", "end start"]
+    });
+
+    const y = useTransform(scrollYProgress, [0, 1], [0, -100 * speed]);
+
+    return (
+      <div ref={ref}>
+        <motion.div style={{ y }}>{children}</motion.div>
+      </div>
+    );
+  };
+
+  // Magnetic Cursor Component
+  const MagneticCursor = () => {
+    const cursorRef = useRef(null);
+    const trailRefs = useRef([]);
+    const [position, setPosition] = useState({ x: -100, y: -100 });
+    const [hovering, setHovering] = useState(false);
+    const [clicking, setClicking] = useState(false);
+    const [trailPositions, setTrailPositions] = useState(Array(5).fill({ x: -100, y: -100 }));
+
+    useEffect(() => {
+      const moveCursor = (e) => {
+        setPosition({ x: e.clientX, y: e.clientY });
+        setTrailPositions(prev => {
+          const newPositions = [...prev];
+          newPositions.pop();
+          return [{ x: e.clientX, y: e.clientY }, ...newPositions];
+        });
+      };
+      
+      const handleMouseDown = () => setClicking(true);
+      const handleMouseUp = () => setClicking(false);
+      
+      window.addEventListener('mousemove', moveCursor);
+      window.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mouseup', handleMouseUp);
+      
+      // Add hover detection
+      const interactiveElements = [
+        ...document.querySelectorAll('a, button, .magnetic, input, textarea, select'),
+      ];
+      
+      interactiveElements.forEach(el => {
+        el.addEventListener('mouseenter', () => setHovering(true));
+        el.addEventListener('mouseleave', () => setHovering(false));
+      });
+
+      return () => {
+        window.removeEventListener('mousemove', moveCursor);
+        window.removeEventListener('mousedown', handleMouseDown);
+        window.removeEventListener('mouseup', handleMouseUp);
+        interactiveElements.forEach(el => {
+          el.removeEventListener('mouseenter', () => setHovering(true));
+          el.removeEventListener('mouseleave', () => setHovering(false));
+        });
+      };
+    }, []);
+
+    return (
+      <>
+        <motion.div
+          ref={cursorRef}
+          className="fixed top-0 left-0 pointer-events-none z-[9999] mix-blend-difference"
+          animate={{
+            x: position.x - 10,
+            y: position.y - 10,
+            scale: clicking ? 0.7 : hovering ? 1.8 : 1,
+            opacity: hovering || clicking ? 1 : 0.8,
+          }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 800, 
+            damping: 25, 
+            mass: 0.5 
+          }}
+        >
+          <div className={`w-4 h-4 rounded-full ${
+            hovering ? 'bg-indigo-500' : clicking ? 'bg-purple-500' : 'bg-white'
+          } transition-colors shadow-lg ${hovering ? 'shadow-indigo-500/30' : ''}`} />
+        </motion.div>
+        
+        {trailPositions.map((pos, i) => (
+          <motion.div
+            key={i}
+            className="fixed top-0 left-0 pointer-events-none z-[9998] mix-blend-difference"
+            animate={{
+              x: pos.x - 8 + (Math.random() * 4 - 2),
+              y: pos.y - 8 + (Math.random() * 4 - 2),
+              scale: 1 - (i * 0.15),
+              opacity: 0.6 - (i * 0.1)
+            }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 500, 
+              damping: 30, 
+              mass: 0.3,
+              delay: i * 0.01
+            }}
+          >
+            <div className={`w-3 h-3 rounded-full ${
+              hovering ? 'bg-indigo-400/50' : clicking ? 'bg-purple-400/50' : 'bg-white/50'
+            } transition-colors`} />
+          </motion.div>
+        ))}
+      </>
+    );
+  };
+
+  // Magnetic Button Component (Reusable)
+  const MagneticButton = ({ children, onClick, className = '' }) => {
+    const ref = useRef(null);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [hovering, setHovering] = useState(false);
+
+    useEffect(() => {
+      if (!ref.current) return;
+      
+      const handleMouseMove = (e) => {
+        const rect = ref.current.getBoundingClientRect();
+        setPosition({
+          x: e.clientX - rect.left - rect.width / 2,
+          y: e.clientY - rect.top - rect.height / 2
+        });
+      };
+      
+      const handleMouseEnter = () => setHovering(true);
+      const handleMouseLeave = () => {
+        setHovering(false);
+        setPosition({ x: 0, y: 0 });
+      };
+      
+      ref.current.addEventListener('mousemove', handleMouseMove);
+      ref.current.addEventListener('mouseenter', handleMouseEnter);
+      ref.current.addEventListener('mouseleave', handleMouseLeave);
+      
+      return () => {
+        if (ref.current) {
+          ref.current.removeEventListener('mousemove', handleMouseMove);
+          ref.current.removeEventListener('mouseenter', handleMouseEnter);
+          ref.current.removeEventListener('mouseleave', handleMouseLeave);
+        }
+      };
+    }, []);
+
+    return (
+      <motion.button
+        ref={ref}
+        onClick={onClick}
+        className={`relative overflow-hidden px-6 py-3 rounded-full font-medium magnetic ${className}`}
+        whileTap={{ scale: 0.95 }}
+      >
+        <motion.span 
+          className="relative z-10 flex items-center justify-center gap-2"
+          animate={{
+            x: position.x * 0.2,
+            y: position.y * 0.2
+          }}
+          transition={{ type: 'spring', stiffness: 400, damping: 15, mass: 0.1 }}
+        >
+          {children}
+        </motion.span>
+        <motion.div 
+          className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full z-0"
+          initial={{ scale: 1 }}
+          animate={{ 
+            scale: hovering ? 1.05 : 1,
+            x: position.x * 0.4,
+            y: position.y * 0.4
+          }}
+          transition={{ type: 'spring', stiffness: 300, damping: 15, mass: 0.1 }}
+        />
+        {hovering && (
+          <motion.div 
+            className="absolute inset-0 rounded-full pointer-events-none"
+            initial={{ opacity: 0, scale: 1 }}
+            animate={{ opacity: 0.2, scale: 1.5 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            style={{
+              background: "radial-gradient(circle, rgba(124, 58, 237, 0.8) 0%, rgba(124, 58, 237, 0) 70%)"
+            }}
+          />
+        )}
+      </motion.button>
+    );
+  };
+
+  const GlowingCard = ({ icon, title, description, index }) => {
+    return (
+      <motion.div
+        className="relative overflow-hidden bg-gray-900/50 backdrop-blur-sm p-8 rounded-2xl border border-gray-800 hover:border-indigo-500 transition-all group"
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-50px" }}
+        transition={{ duration: 0.6, delay: index * 0.1 }}
+        whileHover={{ y: -10 }}
+      >
+        <div className="absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full filter blur-3xl"></div>
+        </div>
+        <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform">
+          {icon}
+        </div>
+        <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
+        <p className="text-gray-400">{description}</p>
+      </motion.div>
+    );
   };
 
   return (
-    <div className='w-full'>
-      <div className='w-full bg-blue-400 pt-5'>
-        <Navbarcmp />
+    <>
+      <MagneticCursor />
+      
+      {showIntro && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white z-[9999] flex items-center justify-center p-10">
+          <video autoPlay muted playsInline className="object-cover">
+            <source src="/intro.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      )}
+
+      <div className='w-full'>
+        <Navbarcmp onFindParkingClick={scrollToSearch} />
       </div>
 
-      <div>
-        <div>
+      {/* Hero Section with Parallax */}
+      <div className="relative overflow-hidden h-screen">
+        <ParallaxSection speed={0.5}>
           <Image
-            alt="HeroUI Album Cover"
+            alt="Hero"
             radius='none'
-            className="w-full filter brightness-75 h-dvw md:h-auto"
-            src="https://images.unsplash.com/photo-1629238727881-cdc61062fba1?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            className="w-full h-full object-cover filter brightness-75"
+            src="https://images.unsplash.com/photo-1629238727881-cdc61062fba1?q=80&w=2670&auto=format&fit=crop"
+          />
+        </ParallaxSection>
+        
+        <div id='Searchfrom' className="absolute top-0 left-0 w-full h-full flex items-center justify-center px-4 z-10">
+          <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6">
+            <div className="w-full md:w-1/2 text-center md:text-left">
+              <motion.p 
+                className="text-white text-2xl lg:text-4xl font-semibold cursor-pointer"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                onClick={scrollToSearch}
+              >
+                Find the parking that suits you best
+                <br />
+                <span className="text-base lg:text-3xl text-yellow-400">Starting from £19</span>
+              </motion.p>
+            </div>
+            <div className="w-full md:w-1/2 bg-transparent">
+              {searching ? (
+                <LoadingCard text="Searching for Parking..." />
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                >
+                  <Parkingsearchcmp
+                    airports={airports}
+                    selectedAirport={selectedAirport}
+                    setSelectedAirport={setSelectedAirport}
+                    dropOffDate={dropOffDate}
+                    setDropOffDate={setDropOffDate}
+                    dropOffTime={dropOffTime}
+                    setDropOffTime={setDropOffTime}
+                    pickupDate={pickupDate}
+                    setPickupDate={setPickupDate}
+                    pickupTime={pickupTime}
+                    setPickupTime={setPickupTime}
+                    loading={loading}
+                    hasMounted={hasMounted}
+                    errors={errors}
+                    setErrors={setErrors}
+                    searchonclick={searchclick}
+                  />
+                </motion.div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <section className="py-24 px-6 bg-gradient-to-b from-gray-950 to-gray-900">
+        <div className="max-w-7xl mx-auto">
+          <motion.div 
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <span className="text-sm font-semibold tracking-wider text-indigo-400 mb-4 inline-block">
+              WHY CHOOSE US
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              The <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Simple parking</span> Difference
+            </h2>
+            <p className="text-lg text-gray-400 max-w-3xl mx-auto">
+              We're revolutionizing airport parking with cutting-edge technology 
+              and customer-first service.
+            </p>
+          </motion.div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                title: "AI-Powered Pricing",
+                description: "Our algorithms constantly monitor prices to guarantee you the best deal at all times.",
+                icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                )
+              },
+              {
+                title: "Instant Booking",
+                description: "Secure your spot in seconds with our streamlined reservation system.",
+                icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                )
+              },
+              {
+                title: "24/7 Security",
+                description: "All facilities feature advanced surveillance and round-the-clock patrols.",
+                icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                )
+              },
+              {
+                title: "Free Cancellation",
+                description: "Change your plans anytime with no penalty up to 24 hours before.",
+                icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )
+              },
+              {
+                title: "Valet Options",
+                description: "Premium service where we park for you - just drop and go.",
+                icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )
+              },
+              {
+                title: "EV Charging",
+                description: "Dedicated spaces with fast charging for electric vehicles.",
+                icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )
+              }
+            ].map((feature, index) => (
+              <GlowingCard 
+                key={index}
+                icon={feature.icon}
+                title={feature.title}
+                description={feature.description}
+                index={index}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+      
+      {/* Popular Airports */}
+      <section id='Airports' className="py-24 px-6 bg-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full opacity-10">
+            <div className="grid-dots"></div>
+          </div>
+          <motion.div 
+            className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-indigo-900/20 filter blur-3xl"
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.3, 0.2]
+            }}
+            transition={{
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div 
+            className="absolute bottom-1/3 right-1/4 w-96 h-96 rounded-full bg-purple-900/20 filter blur-3xl"
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.2, 0.3, 0.2]
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2
+            }}
           />
         </div>
-
-        <div className="absolute top-[25%] md:top-[40%] left-0 w-full px-10 z-10 flex flex-col md:flex-row items-center justify-center gap-6">
-          <div className="w-full md:w-1/2 text-center md:text-left">
-            <p className="text-white text-2xl lg:text-4xl font-semibold">
-              Find the parking that suits you best
-              <br />
-              <span className="text-base lg:text-3xl text-yellow-400">Starting from £19</span>
+        
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div 
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <span className="text-sm font-semibold tracking-wider text-indigo-400 mb-4 inline-block">
+              POPULAR AIRPORTS
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Parking Solutions at <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Major Airports</span>
+            </h2>
+            <p className="text-lg text-gray-400 max-w-3xl mx-auto">
+              We partner with parking facilities at all major airports to bring you the best options.
             </p>
-          </div>
-          <div className="w-full md:w-1/2 bg-transparent">
-            {searching ? (
-              <LoadingCard text="Searching for Parking..." />
-            ) : (
-              <Parkingsearchcmp
-                airports={airports}
-                selectedAirport={selectedAirport}
-                setSelectedAirport={setSelectedAirport}
-                dropOffDate={dropOffDate}
-                setDropOffDate={setDropOffDate}
-                dropOffTime={dropOffTime}
-                setDropOffTime={setDropOffTime}
-                pickupDate={pickupDate}
-                setPickupDate={setPickupDate}
-                pickupTime={pickupTime}
-                setPickupTime={setPickupTime}
-                loading={loading}
-                hasMounted={hasMounted}
-                errors={errors}
-                setErrors={setErrors}
-                searchonclick={searchclick}
-              />
-            )}
+          </motion.div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { 
+                name: "Heathrow", 
+                code: "LHR", 
+                discount: "30% OFF", 
+                price: "£12/day",
+                image: "https://images.unsplash.com/photo-1556388158-158ea5ccacbd?q=80&w=2670&auto=format&fit=crop"
+              },
+              { 
+                name: "Gatwick", 
+                code: "LGW", 
+                discount: "25% OFF", 
+                price: "£10/day",
+                image: "https://images.unsplash.com/photo-1527631746610-bca00a040d60?q=80&w=2670&auto=format&fit=crop"
+              },
+              { 
+                name: "Manchester", 
+                code: "MAN", 
+                discount: "20% OFF", 
+                price: "£8/day",
+                image: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=2670&auto=format&fit=crop"
+              },
+              { 
+                name: "Stansted", 
+                code: "STN", 
+                discount: "15% OFF", 
+                price: "£9/day",
+                image: "https://images.unsplash.com/photo-1470004914212-05527e49370b?q=80&w=2574&auto=format&fit=crop"
+              }
+            ].map((airport, index) => (
+              <motion.div
+                key={index}
+                className="relative overflow-hidden rounded-2xl group"
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ y: -10 }}
+              >
+                <div className="absolute inset-0 z-0">
+                  <Image
+                    src={airport.image}
+                    alt={airport.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    radius="none"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent" />
+                </div>
+                
+                <div className="relative z-10 h-full flex flex-col justify-between p-6 min-h-[300px]">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">{airport.name}</h3>
+                        <p className="text-gray-300">{airport.code} Airport</p>
+                      </div>
+                      <div className="px-3 py-1 bg-indigo-600 text-white text-sm font-medium rounded-full">
+                        {airport.discount}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-auto">
+                    <div className="flex items-end justify-between">
+                      <span className="text-2xl font-bold text-white">{airport.price}</span>
+                      <MagneticButton 
+                        className="bg-white text-gray-900 hover:bg-gray-100"
+                        onClick={scrollToSearch}
+                      >
+                        View Parking
+                      </MagneticButton>
+                    </div>
+                    <div className="text-sm text-gray-300 mt-2">
+                      Starting from {airport.price}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10"></div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-24 px-6 bg-gray-950 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div 
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <span className="text-sm font-semibold tracking-wider text-indigo-400 mb-4 inline-block">
+              CUSTOMER STORIES
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Trusted by <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Thousands</span>
+            </h2>
+            <p className="text-lg text-gray-400 max-w-3xl mx-auto">
+              Don't just take our word for it - hear what our customers have to say.
+            </p>
+          </motion.div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                quote: "Simple parking saved me over £50 on my last trip. The app is so intuitive and the parking facility was excellent - well lit and secure.",
+                author: "Sarah Johnson",
+                role: "Frequent Traveler",
+                rating: 5
+              },
+              {
+                quote: "As a business traveler, I need reliability. Simple parking has never let me down, even with last-minute bookings during peak seasons.",
+                author: "Michael Chen",
+                role: "Business Traveler",
+                rating: 5
+              },
+              {
+                quote: "The valet service is worth every penny when traveling with kids. No more dragging luggage through parking lots in the rain!",
+                author: "Emma Rodriguez",
+                role: "Family Traveler",
+                rating: 4
+              }
+            ].map((testimonial, index) => (
+              <motion.div
+                key={index}
+                className="bg-gray-900/50 backdrop-blur-sm p-8 rounded-2xl border border-gray-800 hover:border-indigo-500 transition-all group"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                whileHover={{ y: -5 }}
+              >
+                <div className="text-yellow-400 mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <svg key={i} xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <p className="text-gray-300 mb-6 italic">"{testimonial.quote}"</p>
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mr-4">
+                    <span className="text-white font-bold">{testimonial.author.charAt(0)}</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white">{testimonial.author}</h4>
+                    <p className="text-sm text-gray-400">{testimonial.role}</p>
+                  </div>
+                </div>
+                <div className="absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10"></div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 px-6 bg-gradient-to-br from-indigo-900/30 to-purple-900/30 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Ready for <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Stress-Free</span> Parking?
+            </h2>
+            <p className="text-lg text-gray-300 max-w-3xl mx-auto mb-8">
+              Join thousands of travelers who trust Simple parking for their airport parking needs.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <MagneticButton 
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg hover:shadow-indigo-500/20"
+                onClick={scrollToSearch}
+              >
+                Find Your Parking Now
+              </MagneticButton>
+              <MagneticButton className="bg-transparent border border-white text-white hover:bg-white/10">
+                Learn More
+              </MagneticButton>
+            </div>
+          </motion.div>
+        </div>
+        
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden -z-10">
+          <motion.div 
+            className="absolute top-1/3 left-1/4 w-64 h-64 rounded-full bg-indigo-500/10 filter blur-3xl"
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.3, 0.2]
+            }}
+            transition={{
+              duration: 10,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div 
+            className="absolute bottom-1/3 right-1/4 w-96 h-96 rounded-full bg-purple-500/10 filter blur-3xl"
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.2, 0.3, 0.2]
+            }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2
+            }}
+          />
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center space-x-2 mb-6">
+              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">S</span>
+              </div>
+              <h2 className="text-xl font-bold">Simple parking</h2>
+            </div>
+            <p className="text-gray-400 mb-6">
+              Simplifying airport parking for millions of travelers worldwide.
+            </p>
+            <div className="flex space-x-4">
+              {[
+                { name: 'twitter', url: 'https://twitter.com/yourcompany' },
+                { name: 'facebook', url: 'https://facebook.com/yourcompany' },
+                { name: 'instagram', url: 'https://instagram.com/yourcompany' }
+              ].map((social) => (
+                <a 
+                  key={social.name}
+                  href={social.url} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors magnetic"
+                >
+                  <span className="sr-only">{social.name}</span>
+                  <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+          
+          {[
+            { 
+              title: "Company", 
+              links: [
+                { text: "About Us", url: "/about" },
+                { text: "Careers", url: "/careers" },
+                { text: "Blog", url: "/blog" },
+                { text: "Help", url: "/help" }
+              ] 
+            },
+            { 
+              title: "Support", 
+              links: [
+                { text: "Help Center", url: "/help" },
+                { text: "Contact Us", url: "/help" },
+                { text: "Privacy Policy", url: "/privacy" },
+                { text: "Terms of Service", url: "/terms" }
+              ] 
+            },
+            { 
+              title: "Airports", 
+              links: [
+                { text: "Heathrow", url: "/search?airport=heathrow", isSearch: true },
+                { text: "Gatwick", url: "/search?airport=gatwick", isSearch: true },
+                { text: "Manchester", url: "/search?airport=manchester", isSearch: true },
+                { text: "All Airports", url: "/search", isSearch: true }
+              ] 
+            }
+          ].map((section, index) => (
+            <div key={index}>
+              <h3 className="text-lg font-semibold mb-6">{section.title}</h3>
+              <ul className="space-y-3">
+                {section.links.map((link, idx) => (
+                  <li key={idx}>
+                    <a 
+                      href={link.url} 
+                      className="text-gray-400 hover:text-white transition-colors magnetic"
+                      onClick={link.isSearch ? (e) => {
+                        e.preventDefault();
+                        // Add your search form navigation logic here
+                        // For example, using React Router:
+                        // navigate(link.url);
+                        // Or scroll to search form:
+                        // document.getElementById('search-form').scrollIntoView();
+                      } : undefined}
+                    >
+                      {link.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </footer>
+    </>
   );
 };
 
