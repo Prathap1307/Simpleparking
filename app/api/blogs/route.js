@@ -1,7 +1,6 @@
 // app/api/blogs/route.js
 
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 
 // GET all blog posts
