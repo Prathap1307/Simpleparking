@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import DynamicTable from '../Tablecmp';
 import Dynamicmodal from '../Modalcmp';
@@ -36,12 +37,14 @@ export default function TodaysBookings() {
 
   const columns = [
     { name: "Order ID", uid: "OrderId" },
-    { name: " Name", uid: "ParkingName" },
-    { name: "Parking Space", uid: "CustomerName" },
+    { name: "Name", uid: "ParkingName" },
+    { name: "Parking Space", uid: "ParkingSlot" },
     { name: "Customer Email", uid: "CustomerEmail" },
     { name: "Phone Number", uid: "CustomerPhone" },
-    { name: "From Date", uid: "FromDateTime" },
-    { name: "To Date", uid: "ToDateTime" },
+    { name: "From Date", uid: "FromDate" },
+    { name: "From Time", uid: "FromTime" },
+    { name: "To Date", uid: "ToDate" },
+    { name: "To Time", uid: "ToTime" },
     { name: "Airport", uid: "Airport" },
     { name: "Paid Price", uid: "PaidAmount" },
     { name: "ACTIONS", uid: "actions" },
@@ -51,6 +54,29 @@ export default function TodaysBookings() {
     confirmed: "success",
     cancelled: "danger",
     pending: "warning",
+  };
+
+  const generateOrderId = async () => {
+    const res = await fetch("/api/Todaysbooking");
+    const existingBookings = await res.json();
+
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentYear = String(now.getFullYear()).slice(-2);
+
+    const currentMonthOrders = existingBookings.filter(booking => {
+      if (!booking.OrderId) return false;
+      return booking.OrderId.includes(`simpleparking${currentMonth}${currentYear}`);
+    });
+
+    let nextOrderNum = 1;
+    if (currentMonthOrders.length > 0) {
+      const lastOrder = currentMonthOrders[currentMonthOrders.length - 1];
+      const lastOrderNum = parseInt(lastOrder.OrderId.split('-')[1]);
+      nextOrderNum = lastOrderNum + 1;
+    }
+
+    return `simpleparking${currentMonth}${currentYear}-${String(nextOrderNum).padStart(2, '0')}`;
   };
 
   const fetchData = async () => {
@@ -94,7 +120,7 @@ export default function TodaysBookings() {
     setCurrentRecord(item);
     setIsEdit(true);
     setIsModalOpen(true);
-    setCustomerName(item.ParkingName || "");
+    setCustomerName(item.ParkingName.replace(/\(.*\)/, '').trim()); // Remove (edited by admin) if present
     setCustomerEmail(item.CustomerEmail || "");
     setCustomerPhone(item.CustomerPhone || "");
     setFromDate(item.FromDate || "");
@@ -105,8 +131,8 @@ export default function TodaysBookings() {
     setPaymentMethod(item.PaymentMethod || "");
     setCarNumber(item.CarNumber || "");
     setLocation(item.Location || "");
-    setAirport(item.Airport || "");
-    setParkingSlot(item.ParkingSlot || "");
+    setAirport(item.Airport || ""); // Make sure airport is set
+    setParkingSlot(item.ParkingSlot || ""); // Make sure parking slot is set
     setBookingStatus(item.Status || "");
   };
 
@@ -149,8 +175,8 @@ export default function TodaysBookings() {
     { label: "Car Number", value: carNumber, onChange: (e) => setCarNumber(e.target.value), type: "text" },
     {
       label: "Airport",
-      value: location,
-      onChange: setLocation,
+      value: airport,
+      onChange: setAirport,
       type: "autocomplete",
       options: LocationsData.map(loc => ({
         label: loc.Airport_name,
@@ -180,9 +206,10 @@ export default function TodaysBookings() {
       color: "primary",
       onClick: async () => {
         try {
+          const now = new Date();
           const newRecord = {
             ...(isEdit && { id: currentRecord.id }),
-            ParkingName: customerName,
+            ParkingName: isEdit ? `${customerName} (edited by admin)` : `${customerName} (added by admin)`,
             CustomerEmail: customerEmail,
             CustomerPhone: customerPhone,
             FromDate: fromDate,
@@ -192,41 +219,45 @@ export default function TodaysBookings() {
             PaidAmount: paidAmount,
             PaymentMethod: paymentMethod,
             CarNumber: carNumber,
-            Location: location,
+            Location: location || airport,
             Airport: airport,
             ParkingSlot: parkingSlot,
-            Status: bookingStatus,
+            Status: bookingStatus || 'confirmed',
           };
 
           if (!isEdit) {
-            const res = await fetch("/api/Todaysbooking");
-            const existing = await res.json();
-            const ids = existing.map(i => parseInt(i.id)).filter(n => !isNaN(n));
-            newRecord.id = ids.length > 0 ? String(Math.max(...ids) + 1).padStart(2, '0') : "01";
-            newRecord.createdAt = new Date().toISOString();
+            newRecord.OrderId = await generateOrderId();
+            newRecord.id = String(Date.now());
+            newRecord.createdAt = now.toISOString();
+            newRecord.bookingDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+            newRecord.bookingTime = now.toTimeString().split(' ')[0]; // HH:MM:SS format
           }
 
-          newRecord.updatedAt = new Date().toISOString();
+          newRecord.updatedAt = now.toISOString();
 
-          await fetch("/api/Todaysbooking", {
+          const response = await fetch("/api/Todaysbooking", {
             method: isEdit ? "PUT" : "POST",
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newRecord),
           });
 
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to save booking');
+          }
+
           await fetchData();
           clearForm();
         } catch (err) {
           console.error("Save error:", err);
+          alert(`Save failed: ${err.message}`);
         }
       },
     },
   ];
 
-
   const fetchlocations = async () => {
     try {
-      // TODO: Update this to your locations API endpoint
       const res = await fetch("/api/Locations");
       if (!res.ok) throw new Error("Failed to fetch locations data");
       const data = await res.json();
@@ -247,10 +278,10 @@ export default function TodaysBookings() {
     }
   }
     
-    useEffect(() => {
-      fetchlocations();
-      fetchparkingslots();
-    }, []);
+  useEffect(() => {
+    fetchlocations();
+    fetchparkingslots();
+  }, []);
 
   return (
     <div>

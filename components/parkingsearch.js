@@ -38,6 +38,14 @@ export default function Parkingsearchcmp({
     if (!pickupDate || !pickupTime) formErrors.pickup = 'Pick-up date and time required';
     if (pickupDate <= now) formErrors.pickup = 'Pick-up must be in the future';
     if (pickupDate < dropOffDate) formErrors.pickupBeforeDropOff = 'Pick-up cannot be before Drop-off';
+    
+    const Datetimeinfo = {
+      dropOffDate : dropOffDate , 
+      dropOffTime : dropOffTime , 
+      airports : airports
+    } 
+
+    sessionStorage.setItem('Datetimeinfo', JSON.stringify(Datetimeinfo));
 
     setErrors(formErrors);
     if (Object.keys(formErrors).length === 0) {

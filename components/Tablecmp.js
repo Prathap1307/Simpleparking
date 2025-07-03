@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
   Table,
   TableHeader,
@@ -11,6 +11,7 @@ import {
   Chip,
   Tooltip,
 } from "@heroui/react";
+import jsPDF from 'jspdf';
 
 export const EyeIcon = (props) => {
   return (
@@ -133,7 +134,107 @@ export const EditIcon = (props) => {
   );
 };
 
+export const PrintIcon = (props) => {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      focusable="false"
+      height="1em"
+      role="presentation"
+      viewBox="0 0 24 24"
+      width="1em"
+      {...props}
+    >
+      <path
+        d="M6 17.9827C4.44655 17.9354 3.51998 17.7626 2.87868 17.1213C2 16.2426 2 14.8284 2 12C2 9.17157 2 7.75736 2.87868 6.87868C3.75736 6 5.17157 6 8 6H16C18.8284 6 20.2426 6 21.1213 6.87868C22 7.75736 22 9.17157 22 12C22 14.8284 22 16.2426 21.1213 17.1213C20.48 17.7626 19.5535 17.9354 18 17.9827"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M9 10H15"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 14H16"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M18 6V5.2C18 4.0799 18 3.51984 17.782 3.09202C17.5903 2.71569 17.2843 2.40973 16.908 2.21799C16.4802 2 15.9201 2 14.8 2H9.2C8.0799 2 7.51984 2 7.09202 2.21799C6.71569 2.40973 6.40973 2.71569 6.21799 3.09202C6 3.51984 6 4.0799 6 5.2V6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M6 18V19.8C6 20.9201 6 21.4802 6.21799 21.908C6.40973 22.2843 6.71569 22.5903 7.09202 22.782C7.51984 23 8.0799 23 9.2 23H14.8C15.9201 23 16.4802 23 16.908 22.782C17.2843 22.5903 17.5903 22.2843 17.782 21.908C18 21.4802 18 20.9201 18 19.8V18"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+};
+
 const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete }) => {
+  const generatePDF = (item) => {
+    // Convert 30cm x 16cm to pixels (1cm ≈ 28.35px)
+    const width = 30 * 28.35;
+    const height = 16 * 28.35;
+    
+    const doc = new jsPDF({
+      orientation: width > height ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [width, height]
+    });
+
+    // Add logo or header
+    doc.setFontSize(24);
+    doc.setTextColor(0, 0, 128); // Navy blue color
+    doc.text("SIMPLE PARKING RECEIPT", width/2, 40, { align: "center" });
+    
+    // Add border
+    doc.setDrawColor(0, 0, 128);
+    doc.setLineWidth(2);
+    doc.rect(20, 20, width-40, height-40);
+
+    // Add customer details section
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text("CUSTOMER DETAILS", 30, 80);
+    doc.setFontSize(12);
+    doc.text(`Order ID: ${item.OrderId || "N/A"}`, 30, 100);
+    doc.text(`Customer Name: ${item.ParkingName.replace(/\(.*\)/, '').trim() || "N/A"}`, 30, 120);
+    doc.text(`Email: ${item.CustomerEmail || "N/A"}`, 30, 140);
+    doc.text(`Phone: ${item.CustomerPhone || "N/A"}`, 30, 160);
+
+    // Add booking details section
+    doc.setFontSize(16);
+    doc.text("BOOKING DETAILS", width/2 + 30, 80);
+    doc.setFontSize(12);
+    doc.text(`Parking Space: ${item.ParkingSlot || "N/A"}`, width/2 + 30, 100);
+    doc.text(`Airport: ${item.Airport || "N/A"}`, width/2 + 30, 120);
+    doc.text(`From: ${formatDate(item.FromDate)} ${formatTime(item.FromTime)}`, width/2 + 30, 140);
+    doc.text(`To: ${formatDate(item.ToDate)} ${formatTime(item.ToTime)}`, width/2 + 30, 160);
+
+    // Add payment details section
+    doc.setFontSize(16);
+    doc.text("PAYMENT DETAILS", 30, 200);
+    doc.setFontSize(12);
+    doc.text(`Paid Amount: $${item.PaidAmount || "0"}`, 30, 220);
+    doc.text(`Payment Method: ${item.PaymentMethod || "N/A"}`, 30, 240);
+    doc.text(`Car Number: ${item.CarNumber || "N/A"}`, 30, 260);
+
+    // Add footer
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Thank you for choosing Simple Parking!", width/2, height - 50, { align: "center" });
+    doc.text(`Generated on ${new Date().toLocaleString()}`, width/2, height - 30, { align: "center" });
+
+    // Open in new tab
+    window.open(doc.output('bloburl'), '_blank');
+  };
 
   const handleEdit = (item) => {
     onEdit && onEdit(item);
@@ -143,21 +244,43 @@ const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete }) => {
     onDelete && onDelete(item);
   };
 
-  function formatDateTime(dateTimeString) {
-    if (!dateTimeString) return "";
-    const dateTime = new Date(dateTimeString);
-    return dateTime.toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
+  function formatDate(dateString) {
+    if (!dateString) return "";
+
+    if (dateString.includes("T")) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    const [year, month, day] = dateString.split("-");
+    return `${day}/${month}/${year}`;
   }
 
+  function formatTime(timeString) {
+    if (!timeString) return "";
 
+    if (timeString.includes("T")) {
+      const time = new Date(timeString);
+      return time.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    }
 
+    return timeString; 
+  }
 
   const renderCell = React.useCallback((item, columnKey) => {
-    if (columnKey === "FromDateTime" || columnKey === "ToDateTime") {
-      return formatDateTime(item[columnKey]);
+    if (columnKey === "FromDate" || columnKey === "ToDate") {
+      return formatDate(item[columnKey]);
+    }
+    if (columnKey === "FromTime" || columnKey === "ToTime") {
+      return formatTime(item[columnKey]);
     }
 
     const cellValue = item[columnKey];
@@ -197,9 +320,17 @@ const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete }) => {
             <Tooltip content="Edit">
               <span
                 className="text-lg text-default-400 cursor-pointer active:opacity-50"
-                onClick={() => onEdit(item)}
+                onClick={() => handleEdit(item)}
               >
                 <EditIcon />
+              </span>
+            </Tooltip>
+            <Tooltip content="Print">
+              <span
+                className="text-lg text-blue-500 cursor-pointer active:opacity-50"
+                onClick={() => generatePDF(item)}
+              >
+                <PrintIcon />
               </span>
             </Tooltip>
             <Tooltip color="danger" content="Delete">

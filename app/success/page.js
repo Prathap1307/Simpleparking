@@ -9,45 +9,84 @@ export default function SuccessPage() {
   const router = useRouter();
   const [bookingData, setBookingData] = useState(null);
   const [customerDetails, setCustomerDetails] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Credit Card');
   const [searchData, setSearchData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Unified data retrieval and validation
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        // Try new combined format first
+        const combinedData = sessionStorage.getItem('bookingDetails');
+        if (combinedData) {
+          const parsed = JSON.parse(combinedData);
+          setBookingData({
+            title: parsed.ParkingSlot,
+            totalPrice: parseFloat(parsed.PaidAmount) || 0
+          });
+          setCustomerDetails({
+            firstName: parsed.ParkingName?.split(' ')[0] || 'N/A',
+            lastName: parsed.ParkingName?.split(' ')[1] || 'N/A',
+            email: parsed.CustomerEmail || 'N/A',
+            phone: parsed.CustomerPhone || 'N/A',
+            licensePlate: parsed.CarNumber || 'N/A'
+          });
+          setSearchData({
+            dropOffDate: parsed.FromDate,
+            dropOffTime: parsed.FromTime,
+            pickupDate: parsed.ToDate,
+            pickupTime: parsed.ToTime,
+            airport: parsed.Airport
+          });
+        } 
+        // Fallback to legacy separate items
+        else {
+          const parking = JSON.parse(sessionStorage.getItem('selectedParking') || 'null');
+          const search = JSON.parse(sessionStorage.getItem('parkingSearchData') || 'null');
+          const customer = JSON.parse(sessionStorage.getItem('customerDetails') || 'null');
+
+          if (!parking || !search || !customer) {
+            throw new Error('Missing required session data');
+          }
+
+          setBookingData(parking);
+          setSearchData(search);
+          setCustomerDetails(customer);
+        }
+
+        setPaymentMethod('Credit Card');
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load booking data:', error);
+        sessionStorage.clear();
+        router.push('/');
+      }
+    };
+
+    loadData();
+  }, [router]);
+
+  
   function mergeDateTime(date, time) {
     if (!date || !time) return null;
-    const d = new Date(date);
-    const t = new Date(time);
-    d.setHours(t.getHours(), t.getMinutes(), 0, 0);
-    return d;
+    const [hours, minutes] = time.split(':').map(Number);
+    const dateObj = new Date(date);
+    dateObj.setHours(hours, minutes, 0, 0);
+    return dateObj;
   }
 
   function formatDateTime(dateObj) {
     if (!dateObj || isNaN(new Date(dateObj))) return "N/A";
     const date = new Date(dateObj);
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    const hh = String(date.getHours()).padStart(2, "0");
-    const min = String(date.getMinutes()).padStart(2, "0");
-    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+    return date.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
-
-  useEffect(() => {
-    // Retrieve all stored data
-    const storedBooking = sessionStorage.getItem('selectedParking');
-    const storedSearch = sessionStorage.getItem('parkingSearchData');
-    const storedCustomer = sessionStorage.getItem('customerDetails');
-
-    if (storedBooking && storedSearch && storedCustomer) {
-      setBookingData(JSON.parse(storedBooking));
-      setCustomerDetails(JSON.parse(storedCustomer));
-      setSearchData(JSON.parse(storedSearch)); // This line was missing
-      
-      // Determine payment method
-      setPaymentMethod('Credit Card');
-    } else {
-      router.push('/');
-    }
-  }, [router]);
 
   const generatePDF = () => {
     if (!bookingData || !customerDetails || !searchData) return;

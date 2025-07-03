@@ -33,6 +33,8 @@ const ParkingCard = ({
   
     const handleBookNow = () => {
     setSearching(true);
+
+    const totalPrice = calculateTotalPrice()
     
     // Save the booking details to session storage
     sessionStorage.setItem('selectedParking', JSON.stringify({
@@ -40,10 +42,12 @@ const ParkingCard = ({
       price,
       pricePerHour,
       duration,
-      totalPrice: calculateTotalPrice(),
+      totalPrice,
       imageUrl
     }));
-    
+
+    const searchData = JSON.parse(sessionStorage.getItem("parkingSearchData"));
+    sessionStorage.setItem("parkingSearchData", JSON.stringify(searchData));
     // Navigate to payment page
     router.push(`/Paymentdetails/${encodeURIComponent(title)}`);
   };
@@ -120,7 +124,7 @@ const ParkingCard = ({
               <div className="text-right mb-4 p-3 bg-gray-800/30 rounded-xl border border-gray-700/50 hover:border-indigo-500/50 transition-colors">
                 <p className="text-xs text-gray-400 mb-1">DAILY RATE</p>
                 <div className="flex items-end justify-end gap-1">
-                  <span className="text-2xl font-bold text-white bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                  <span className="text-2xl font-bold text-white bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text">
                     £{price}
                   </span>
                   <span className="text-xs text-gray-400 mb-1">/day</span>
