@@ -38,6 +38,7 @@ export async function POST(req) {
 }
 
 async function handleSuccessfulPayment(paymentIntent) {
+  if (!paymentIntent.metadata.bookingId) return; 
   // Verify payment is actually successful
   if (paymentIntent.status !== 'succeeded') return;
   
