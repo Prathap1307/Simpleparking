@@ -12,10 +12,8 @@ export async function POST(request) {
       amount: body.amount, // in pence
       currency: "gbp",
       metadata: {
-        bookingId: body.bookingId, // Add this line
-        email: body.email,
-        licensePlate: body.licensePlate,
-        parking: body.selectedParking,
+                ...body.metadata, // PRESERVE METADATA
+        bookingId: body.bookingId 
       },
     });
 

@@ -81,6 +81,25 @@ const CheckoutForm = ({
   const router = useRouter();
   const [processing, setProcessing] = useState(false);
 
+  const createBooking = async (bookingData) => {
+    try {
+      const response = await fetch("/api/Todaysbooking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData)
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create booking");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Booking creation error:", error);
+      throw error;
+    }
+  };
+
   // Import or define generateOrderId function here
   const generateOrderId = async () => {
     try {
@@ -117,7 +136,7 @@ const CheckoutForm = ({
     }
   };
 
-    const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!stripe || !elements) return;
 
@@ -125,118 +144,68 @@ const CheckoutForm = ({
     onProcessingChange(true);
 
     try {
-      // 1. Validate form data
-      if (!validateForm()) {
-        setProcessing(false);
-        onProcessingChange(false);
-        return;
-      }
+      // Validate form
+      if (!validateForm()) return;
 
-      // 2. Generate Order ID
+      // Generate order ID
       const orderId = await generateOrderId();
 
-      // 3. Prepare booking data
-      const now = new Date();
+      // Prepare booking data
       const bookingData = {
-        OrderId: orderId,
-        ParkingName: `${formData.firstName} ${formData.lastName}`.trim(),
+        ParkingName: `${formData.firstName} ${formData.lastName}`,
         CustomerEmail: formData.email,
         CustomerPhone: `${formData.phoneCountry}${formData.phone}`,
         FromDate: searchData.dropOffDate,
         FromTime: searchData.dropOffTime,
         ToDate: searchData.pickupDate,
         ToTime: searchData.pickupTime,
-        PaidAmount: totalPrice.toFixed(2),
-        PaymentMethod: 'Card',
+        PaidAmount: (totalPrice / 100).toFixed(2),
+        PaymentMethod: "card",
         CarNumber: formData.licensePlate,
+        Airport: searchData.airport,
         Location: selectedParking,
-        Airport: searchData.airport || 'N/A',
-        ParkingSlot: selectedParking,
-        Status: 'pending_payment',
-        bookingDate: now.toISOString().split('T')[0],
-        bookingTime: now.toTimeString().split(' ')[0],
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString()
+        Status: "pending_payment",
+        OrderId: orderId,
+        bookingDate: new Date().toISOString().split('T')[0],
+        bookingTime: new Date().toTimeString().split(' ')[0],
+        createdAt: new Date().toISOString()
       };
 
-      sessionStorage.setItem('bookingDetails', JSON.stringify(bookingData));
-      sessionStorage.setItem('selectedParking', JSON.stringify(selectedParking));
-      sessionStorage.setItem('customerDetails', JSON.stringify(formData));
-      sessionStorage.setItem('parkingSearchData', JSON.stringify(searchData));
+      // Create booking in database
+      const bookingResponse = await createBooking(bookingData);
+      if (!bookingResponse?.id) throw new Error('Failed to create booking');
 
-      // 4. First create the booking record
-      const createResponse = await fetch('/api/Todaysbooking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bookingData)
-      });
-
-
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json();
-        throw new Error(errorData.error || 'Failed to create booking');
-      }
-
-      const createdBooking = await createResponse.json();
-
-      // 5. Process payment with Stripe
+      // Process payment
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/success`,
-          receipt_email: formData.email,
+          return_url: `${window.location.origin}/payment/result`,
         },
         redirect: 'if_required'
       });
 
       if (error) {
-        // Update booking status to failed if payment fails
-        await fetch(`/api/Todaysbooking?id=${createdBooking.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            Status: 'payment_failed',
-            updatedAt: new Date().toISOString()
-          })
-        });
+        await updateBookingStatus(bookingResponse.id, 'payment_failed');
         throw error;
       }
 
-      // 6. If payment succeeded, update booking status
+      // Handle immediate success
       if (paymentIntent?.status === "succeeded") {
-        const updateResponse = await fetch(`/api/Todaysbooking?id=${createdBooking.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            Status: 'confirmed',
-            paymentIntentId: paymentIntent.id,
-            updatedAt: new Date().toISOString()
-          })
-        });
-
-        if (!updateResponse.ok) {
-          throw new Error('Failed to update booking status');
-        }
-
-        // Store booking details for success page
-        sessionStorage.setItem('bookingDetails', JSON.stringify({
-          ...bookingData,
-          id: createdBooking.id,
-          paymentIntentId: paymentIntent.id,
-          Status: 'confirmed'
-        }));
-        
-
+        await updateBookingStatus(bookingResponse.id, 'confirmed');
+        router.push(`/payment/success?bookingId=${bookingResponse.id}`);
+      } else {
+        // Payment is processing or requires action
+        router.push(`/payment/pending?bookingId=${bookingResponse.id}`);
       }
+
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error('Payment error:', error);
       alert(`Payment failed: ${error.message}`);
     } finally {
       setProcessing(false);
       onProcessingChange(false);
     }
   };
-
 
   const validateForm = () => {
     if (formData.email !== formData.confirmEmail) {
