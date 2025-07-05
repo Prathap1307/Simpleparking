@@ -184,6 +184,29 @@ const CheckoutForm = ({
         redirect: 'if_required'
       });
 
+      // Add this function to handle status updates
+      const updateBookingStatus = async (bookingId, status) => {
+        try {
+          const response = await fetch('/api/update-booking', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: bookingId,
+              status: status,
+              paymentIntentId: paymentIntent?.id || null
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to update booking status');
+          }
+          return await response.json();
+        } catch (err) {
+          console.error('Status update error:', err);
+          throw err;
+        }
+      };
+
       if (error) {
         await updateBookingStatus(bookingResponse.id, 'payment_failed');
         throw error;
@@ -195,6 +218,7 @@ const CheckoutForm = ({
         router.push(`/payment/success?bookingId=${bookingResponse.id}`);
       } else {
         // Payment is processing or requires action
+        await updateBookingStatus(bookingResponse.id, 'pending');
         router.push(`/payment/pending?bookingId=${bookingResponse.id}`);
       }
 
