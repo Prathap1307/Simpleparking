@@ -9,7 +9,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { motion, AnimatePresence } from "framer-motion";
 import { processCustomerData } from "@/utils/customerUtils";
-import sendBookingEmail from "@/utils/sendBookingEmail";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -121,6 +120,29 @@ const CheckoutForm = ({
     }
   };
 
+
+  const sendBookingEmail = async (bookingDetails) => {
+    try {
+      const response = await fetch('/api/send-booking-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingDetails),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send email');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Email sending failed:', error);
+      throw error;
+    }
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!stripe || !elements) return;
@@ -182,11 +204,10 @@ const CheckoutForm = ({
         parkingSlot: bookingData.Location,
         paidAmount: bookingData.PaidAmount,
         paymentMethod: bookingData.PaymentMethod,
-        Departure_Terminal: bookingData.DepartureTerminal,
-        Departure_Flight: bookingData.DepartureFlightNumber,
-        Arrival_Terminal: bookingData.ReturnTerminal,
-        Arrival_Flight: bookingData.ReturnFlightNumber
-        
+        departureTerminal: bookingData.DepartureTerminal,
+        departureFlightNumber: bookingData.DepartureFlightNumber,
+        returnTerminal: bookingData.ReturnTerminal,
+        returnFlightNumber: bookingData.ReturnFlightNumber
       });
       
       const bookingResponse = await createBooking(bookingData);

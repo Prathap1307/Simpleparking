@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import axios from 'axios';
 import { formatDate } from './formatting';
 import { formatTime } from './formatting';
@@ -5,9 +6,16 @@ import { formatTime } from './formatting';
 
 const sendBookingEmail = async (bookingDetails) => {
   // Validate critical parameters
-  const brevoApiKey = process.env.brevoApiKey;
-  const brevoTemplateId = process.env.brevoTemplateId;
-  const brevoSenderEmail = process.env.brevoSenderEmail;
+  const brevoApiKey = process.env.EMAILAPI;
+  const brevoTemplateId = process.env.EMAILTEMP;
+  const brevoSenderEmail = process.env.SENDERMAIL;
+
+  console.log('Environment Variables:', {
+    EMAILAPI: process.env.EMAILAPI,
+    EMAILTEMP: process.env.EMAILTEMP,
+    SENDERMAIL: process.env.SENDERMAIL
+  });
+  console.log("brevoApiKey",brevoApiKey)
   
   if (!brevoApiKey) throw new Error('Brevo API key is missing');
   if (!brevoTemplateId) throw new Error('Template ID is missing');

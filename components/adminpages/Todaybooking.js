@@ -10,7 +10,6 @@ import autoTable from 'jspdf-autotable';
 import { Pagination } from "@heroui/react";
 import * as XLSX from 'xlsx'; // Import Excel library
 import { processCustomerData } from '@/utils/customerUtils';
-import sendBookingEmail from '@/utils/sendBookingEmail';
 
 export default function TodaysBookings() {
   const [isEdit, setIsEdit] = useState(false);
@@ -937,6 +936,30 @@ const filteredData = useMemo(() => {
       // Implement your date filter logic here
     };
 
+  
+  const sendBookingEmail = async (bookingDetails) => {
+    try {
+      console.log("sendBookingEmail entered")
+      const response = await fetch('/api/sendbookingemail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingDetails),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send email');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Email sending failed:', error);
+      throw error;
+    }
+};
+
   const buttons = [
     { text: "Close", color: "danger", variant: "flat", onClick: clearForm },
     {
@@ -1018,6 +1041,10 @@ const filteredData = useMemo(() => {
             parkingSlot,
             paidAmount,
             paymentMethod,
+            departureTerminal,
+            departureFlightNumber,
+            returnTerminal,
+            returnFlightNumber,
           });
 
           await fetchData();
