@@ -9,7 +9,7 @@ export default function AvailableLocations() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentEditItem, setCurrentEditItem] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Alert control
   const [showAlert, setShowAlert] = useState(false);
@@ -19,14 +19,55 @@ export default function AvailableLocations() {
   const [locationsData, setLocationsData] = useState([]);
   const [locationName, setLocationName] = useState("");
   const [airportName, setAirportName] = useState("");
+  const [terminals, setTerminals] = useState(1);
   const [county, setCounty] = useState("");
   const [country, setCountry] = useState("");
   const [status, setStatus] = useState("active");
+  const [activationDate, setActivationDate] = useState(null);
+  const [activationTime, setActivationTime] = useState(null);
+
+  // Check for pending activations
+  useEffect(() => {
+    const checkActivations = () => {
+      const now = new Date();
+      locationsData.forEach(async (location) => {
+        if (location.Status === "inactive" && location.NextActivation) {
+          const activationTime = new Date(location.NextActivation);
+          if (now >= activationTime) {
+            await updateLocationStatus(location.id, "active");
+          }
+        }
+      });
+    };
+
+    const interval = setInterval(checkActivations, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [locationsData]);
+
+  const updateLocationStatus = async (id, newStatus) => {
+    try {
+      const response = await fetch('/api/Locations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id,
+          Status: newStatus,
+          NextActivation: null 
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+      await refreshTableData();
+    } catch (error) {
+      console.error('Error updating location status:', error);
+    }
+  };
 
   const columns = [
     { name: "LOCATION NAME", uid: "Location_name" },
     { name: "AIRPORT NAME", uid: "Airport_name" },
-    { name: "COUNT", uid: "County" },
+    { name: "TERMINALS", uid: "Terminals" },
+    { name: "COUNTY", uid: "County" },
     { name: "COUNTRY", uid: "Country" },
     { name: "STATUS", uid: "Status" },
     { name: "ACTIONS", uid: "actions" },
@@ -41,14 +82,13 @@ export default function AvailableLocations() {
   const refreshTableData = async () => {
     setLoading(true);
     try {
-      // TODO: Update this to your locations API endpoint
       const res = await fetch("/api/Locations");
       if (!res.ok) throw new Error("Failed to fetch locations data");
       const data = await res.json();
       setLocationsData(data);
     } catch (err) {
       console.error("Error refreshing locations data:", err);
-    }finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -60,9 +100,12 @@ export default function AvailableLocations() {
   const resetForm = () => {
     setLocationName("");
     setAirportName("");
+    setTerminals(1);
     setCounty("");
     setCountry("");
     setStatus("active");
+    setActivationDate(null);
+    setActivationTime(null);
     setIsEditMode(false);
     setModalOpen(false);
   };
@@ -72,31 +115,28 @@ export default function AvailableLocations() {
       console.error("Missing ID key");
       return;
     }
-
     setItemToDelete(item);
     setShowAlert(true);
   };
 
   const confirmDelete = async () => {
-  try {
-    const res = await fetch('/api/Locations', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: itemToDelete.id }),
-    });
+    try {
+      const res = await fetch('/api/Locations', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: itemToDelete.id }),
+      });
 
-    if (!res.ok) throw new Error('Failed to delete');
-    
-    console.log(`Deleted location with ID: ${itemToDelete.id}`);
-    await refreshTableData();
-  } catch (error) {
-    console.error('Error deleting location:', error);
-    alert('Failed to delete location.');
-  } finally {
-    setShowAlert(false);
-    setItemToDelete(null);
-  }
-};
+      if (!res.ok) throw new Error('Failed to delete');
+      await refreshTableData();
+    } catch (error) {
+      console.error('Error deleting location:', error);
+      alert('Failed to delete location.');
+    } finally {
+      setShowAlert(false);
+      setItemToDelete(null);
+    }
+  };
 
   const cancelDelete = () => {
     setShowAlert(false);
@@ -110,9 +150,71 @@ export default function AvailableLocations() {
 
     setLocationName(item.Location_name || "");
     setAirportName(item.Airport_name || "");
+    setTerminals(item.Terminals || 1);
     setCounty(item.County || "");
     setCountry(item.Country || "");
     setStatus(item.Status || "active");
+    
+    if (item.NextActivation) {
+      const nextActivation = new Date(item.NextActivation);
+      setActivationDate(new Date(nextActivation));
+      const time = new Date(0, 0, 0, nextActivation.getHours(), nextActivation.getMinutes());
+      setActivationTime(time);
+    } else {
+      setActivationDate(null);
+      setActivationTime(null);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      let nextActivation = null;
+      if (status === "inactive" && activationDate && activationTime) {
+        nextActivation = new Date(
+          activationDate.getFullYear(),
+          activationDate.getMonth(),
+          activationDate.getDate(),
+          activationTime.getHours(),
+          activationTime.getMinutes()
+        ).toISOString();
+      }
+
+      const locationItem = {
+        ...(isEditMode && { id: currentEditItem.id }),
+        Location_name: locationName,
+        Airport_name: airportName,
+        Terminals: parseInt(terminals) || 1,
+        County: county,
+        Country: country,
+        Status: status,
+        ...(nextActivation && { NextActivation: nextActivation }),
+        updatedAt: new Date().toISOString()
+      };
+
+      if (!isEditMode) {
+        const res = await fetch("/api/Locations");
+        const existingItems = await res.json();
+        const numericIds = existingItems.map(item => parseInt(item.id)).filter(n => !isNaN(n));
+        locationItem.id = numericIds.length > 0 
+          ? String(Math.max(...numericIds) + 1).padStart(2, '0') 
+          : "01";
+        locationItem.createdAt = new Date().toISOString();
+      }
+
+      const method = isEditMode ? 'PUT' : 'POST';
+      const response = await fetch('/api/Locations', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(locationItem),
+      });
+
+      if (!response.ok) throw new Error('Failed to save');
+      await refreshTableData();
+      resetForm();
+    } catch (error) {
+      console.error('Error:', error);
+      alert(`Operation failed: ${error.message}`);
+    }
   };
 
   const modalInputs = [
@@ -129,6 +231,13 @@ export default function AvailableLocations() {
       type: "text"
     },
     {
+      label: "Available Terminals", 
+      value: terminals, 
+      onChange: (e) => setTerminals(e.target.value), 
+      type: "number",
+      min: 1
+    },
+    {
       label: "County", 
       value: county, 
       onChange: (e) => setCounty(e.target.value), 
@@ -143,13 +252,46 @@ export default function AvailableLocations() {
     {
       label: "Status", 
       value: status, 
-      onChange: setStatus, 
+      onChange: (value) => {
+        setStatus(value);
+        if (value === "active") {
+          setActivationDate(null);
+          setActivationTime(null);
+        }
+      }, 
       type: "autocomplete",
       options: [
         { label: "Active", value: "active" }, 
         { label: "Inactive", value: "inactive" }
       ]
-    }
+    },
+    ...(status === "inactive" ? [
+      {
+        label: "Next Activation Date", 
+        value: activationDate ? activationDate.toISOString().split('T')[0] : "", 
+        onChange: (e) => {
+          const date = e.target.value ? new Date(e.target.value) : null;
+          setActivationDate(date);
+        }, 
+        type: "date"
+      },
+      {
+        label: "Next Activation Time", 
+        value: activationTime ? activationTime.toTimeString().substring(0, 5) : "", 
+        onChange: (e) => {
+          const timeStr = e.target.value;
+          let time = null;
+          if (timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            time = new Date();
+            time.setHours(parseInt(hours));
+            time.setMinutes(parseInt(minutes));
+          }
+          setActivationTime(time);
+        }, 
+        type: "time"
+      }
+    ] : [])
   ];
 
   const modalButtons = [
@@ -162,52 +304,12 @@ export default function AvailableLocations() {
         setModalOpen(false);
       }
     },
-      {
-    text: isEditMode ? "Update" : "Save", 
-    color: "primary", 
-    onClick: async () => {
-      try {
-        const locationItem = {
-          ...(isEditMode && { id: currentEditItem.id }),
-          Location_name: locationName,
-          Airport_name: airportName,
-          County: county,
-          Country: country,
-          Status: status,
-          updatedAt: new Date().toISOString()
-        };
-
-        if (!isEditMode) {
-          const res = await fetch("/api/Locations");
-          const existingItems = await res.json();
-          const numericIds = existingItems.map(item => parseInt(item.id)).filter(n => !isNaN(n));
-          locationItem.id = numericIds.length > 0 
-            ? String(Math.max(...numericIds) + 1).padStart(2, '0') 
-            : "01";
-          locationItem.createdAt = new Date().toISOString();
-        }
-
-        const method = isEditMode ? 'PUT' : 'POST';
-        const response = await fetch('/api/Locations', {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(locationItem),
-        });
-
-        if (!response.ok) throw new Error('Failed to save');
-
-        await refreshTableData();
-        resetForm();
-        setModalOpen(false);
-      } catch (error) {
-        console.error('Error:', error);
-        alert(`Operation failed: ${error.message}`);
-      }
+    {
+      text: isEditMode ? "Update" : "Save", 
+      color: "primary", 
+      onClick: handleSave
     }
-  }
-];
-
-
+  ];
 
   return (
     <div>
@@ -229,7 +331,7 @@ export default function AvailableLocations() {
           Editmode={isEditMode}
         />
       </div>
-            {loading ? (
+      {loading ? (
         <div className="flex justify-center items-center h-64">
           <CircularProgress
             color="success"
@@ -240,15 +342,16 @@ export default function AvailableLocations() {
             value={100}
           />
         </div>
-      ) :(
-      <DynamicTable
-        columns={columns}
-        data={locationsData}
-        statusOptions={statusOptions}
-        value="locations"
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />)}
+      ) : (
+        <DynamicTable
+          columns={columns}
+          data={locationsData}
+          statusOptions={statusOptions}
+          value="locations"
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
       {showAlert && itemToDelete && (
         <div className="fixed bottom-6 right-6 z-50 w-[300px]">

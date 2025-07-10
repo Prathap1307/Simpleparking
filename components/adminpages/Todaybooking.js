@@ -7,6 +7,10 @@ import { CircularProgress , Card, CardHeader, CardBody, CardFooter , Input , Sel
 import { useMemo } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Pagination } from "@heroui/react";
+import * as XLSX from 'xlsx'; // Import Excel library
+import { processCustomerData } from '@/utils/customerUtils';
+import sendBookingEmail from '@/utils/sendBookingEmail';
 
 export default function TodaysBookings() {
   const [isEdit, setIsEdit] = useState(false);
@@ -16,6 +20,8 @@ export default function TodaysBookings() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [bookingData, setBookingData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
     // New states for UI elements
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,6 +53,16 @@ export default function TodaysBookings() {
   const [parkingSlot, setParkingSlot] = useState("");
   const [bookingStatus, setBookingStatus] = useState("");
   const [Status,setStatus] = useState()
+  const [filtersActive, setFiltersActive] = useState(false);
+
+  //travel
+  const [terminals, setTerminals] = useState([]);
+  const [loadingTerminals, setLoadingTerminals] = useState(false);
+  const [departureTerminal, setDepartureTerminal] = useState("");
+  const [departureFlightNumber, setDepartureFlightNumber] = useState("");
+  const [returnTerminal, setReturnTerminal] = useState("");
+  const [returnFlightNumber, setReturnFlightNumber] = useState("");
+
 
   // Date formatting helpers
     const formatDate = (dateString) => {
@@ -99,69 +115,134 @@ export default function TodaysBookings() {
         });
       };
 
-    // Filtered data calculation
-    const filteredData = useMemo(() => {
-      let result = [...bookingData];
-      
-      // Apply search filter
-      if (searchTerm) {
-        result = result.filter(booking => {
-          const fieldValue = booking[searchOption]?.toString().toLowerCase() || '';
-          return fieldValue.includes(searchTerm.toLowerCase());
-        });
-      }
+const filteredData = useMemo(() => {
+  let result = [...bookingData];
+  
+  // Apply search filter
+  if (searchTerm) {
+    result = result.filter(booking => {
+      const fieldValue = booking[searchOption]?.toString().toLowerCase() || '';
+      return fieldValue.includes(searchTerm.toLowerCase());
+    });
+  }
 
-      // Apply date filter
-      if (dateFilterOption !== 'all') {
-        const today = new Date().toISOString().split('T')[0];
+  // Only proceed with date filtering if we have valid parameters
+  const shouldFilterDates = dateFilterOption || filterFromDate || filterToDate;
+  
+  if (shouldFilterDates) {
+    // Function to normalize dates to YYYY-MM-DD format for comparison
+    const normalizeDate = (dateStr) => {
+      if (!dateStr) return null;
+      
+      try {
+        // Handle both "2025-07-01" and "2025-07-01T23:00:00.000Z" formats
+        const dateObj = new Date(dateStr);
+        if (isNaN(dateObj.getTime())) return null;
         
-        switch (dateFilterOption) {
-          case 'booking':
-            if (filterFromDate && filterToDate) {
-              result = result.filter(booking => 
-                booking.bookingDate >= filterFromDate && 
-                booking.bookingDate <= filterToDate
-              );
-            }
-            break;
-            
-          case 'pickup':
-            result = result.filter(booking => {
-              const fromDate = booking.FromDate.split('T')[0];
-              return fromDate === today;
-            });
-            break;
-            
-          case 'drop':
-            result = result.filter(booking => {
-              const toDate = booking.ToDate.split('T')[0];
-              return toDate === today;
-            });
-            break;
-            
-          case 'pickup_drop':
-            result = result.filter(booking => {
-              const fromDate = booking.FromDate.split('T')[0];
-              const toDate = booking.ToDate.split('T')[0];
-              return fromDate === today || toDate === today;
-            });
-            break;
-        }
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      } catch (error) {
+        console.error('Error normalizing date:', dateStr, error);
+        return null;
       }
-      
-      return result;
-    }, [
-      bookingData, 
-      searchTerm, 
-      searchOption,
-      dateFilterOption,
-      filterFromDate,
-      filterToDate
-    ]);
+    };
 
-      // Date formatting helpers
+    // Normalize filter dates (use null if not provided)
+    const fromDateNorm = filterFromDate ? normalizeDate(filterFromDate) : null;
+    const toDateNorm = filterToDate ? normalizeDate(filterToDate) : null;
 
-      // count calculate
+    // Map the numeric option to meaningful string
+    const getFilterOption = () => {
+      switch(dateFilterOption) {
+        case "$.0": return "booking";
+        case "$.1": return "pickup";
+        case "$.2": return "drop";
+        case "$.3": return "pickup_drop";
+        case "$.4": return "all";
+        default: return dateFilterOption; // fallback
+      }
+    };
+
+    const effectiveFilterOption = getFilterOption();
+
+    console.log('[FILTER] Date range:', {
+      from: fromDateNorm,
+      to: toDateNorm,
+      option: effectiveFilterOption // Log the mapped option
+    });
+
+    result = result.filter(booking => {
+      // Normalize all relevant dates from the booking
+      const bookingDateNorm = normalizeDate(booking.bookingDate?.S || booking.bookingDate);
+      const pickupDateNorm = normalizeDate(booking.FromDate?.S || booking.FromDate);
+      const dropDateNorm = normalizeDate(booking.ToDate?.S || booking.ToDate);
+
+      console.log('[FILTER] Booking dates:', {
+        id: booking.OrderId,
+        booking: bookingDateNorm,
+        pickup: pickupDateNorm,
+        drop: dropDateNorm
+      });
+
+      // Date comparison function
+      const isDateInRange = (date) => {
+        if (!date) return false;
+        const afterFrom = !fromDateNorm || date >= fromDateNorm;
+        const beforeTo = !toDateNorm || date <= toDateNorm;
+        return afterFrom && beforeTo;
+      };
+
+      // Determine which dates to check based on filter option
+      switch (effectiveFilterOption) {
+        case 'booking':
+          return isDateInRange(bookingDateNorm);
+        case 'pickup':
+          return isDateInRange(pickupDateNorm);
+        case 'drop':
+          return isDateInRange(dropDateNorm);
+        case 'pickup_drop':
+          return isDateInRange(pickupDateNorm) || isDateInRange(dropDateNorm);
+        case 'all':
+          return isDateInRange(bookingDateNorm) || 
+                isDateInRange(pickupDateNorm) || 
+                isDateInRange(dropDateNorm);
+        default:
+          // Default to no date filtering if option is invalid
+          return true;
+      }
+    });
+  }
+  
+  console.log('[FILTER] Filtered results:', result.length);
+  return result;
+}, [
+  bookingData, 
+  searchTerm, 
+  searchOption,
+  dateFilterOption,
+  filterFromDate,
+  filterToDate
+]);
+  // Calculate paginated data
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredData.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredData, currentPage, rowsPerPage]);
+
+  // Calculate total pages safely
+  const totalPages = useMemo(() => {
+    if (filteredData.length === 0 || rowsPerPage === 0) return 1;
+    return Math.ceil(filteredData.length / rowsPerPage);
+  }, [filteredData, rowsPerPage]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredData, rowsPerPage]);
+    
+  // count calculate
 
   useEffect(() => {
     if (bookingData.length === 0) return;
@@ -208,7 +289,6 @@ export default function TodaysBookings() {
     setFilterFromDate("");
     setFilterToDate("");
   };
-
 
   //Remove filter
 
@@ -351,125 +431,208 @@ export default function TodaysBookings() {
     pending: "warning",
   };
 
-  // Generate 
+  const exportToExcel = (data, fileName) => {
+    // Sort data by FromDate (pickup date) - oldest first
+    const sortedData = [...data].sort((a, b) => {
+      const dateA = new Date(a.FromDate?.S || a.FromDate);
+      const dateB = new Date(b.FromDate?.S || b.FromDate);
+      return dateA - dateB;
+    });
 
-    const generateMainReport = () => {
-        const reportData = filteredData.length > 0 ? filteredData : bookingData;
-        generatePDFReport(reportData, "Parking Report");
-      };
+    // Format data for Excel with all dates in DD/MM/YYYY format
+    const excelData = sortedData.map(booking => ({
+      'Order ID': booking.OrderId || 'N/A',
+      'Customer Name': booking.ParkingName || 'N/A',
+      'Email': booking.CustomerEmail || 'N/A',
+      'Phone': booking.CustomerPhone || 'N/A',
+      'Booking Date': formatDateDDMMYYYY(booking.bookingDate?.S || booking.bookingDate),
+      'From Date': formatDateDDMMYYYY(booking.FromDate?.S || booking.FromDate),
+      'To Date': formatDateDDMMYYYY(booking.ToDate?.S || booking.ToDate),
+      'Airport': booking.Airport || 'N/A',
+      'Location': booking.Location || 'N/A',
+      'Parking Slot': booking.ParkingSlot || 'N/A',
+      'Car Number': booking.CarNumber || 'N/A',
+      'Paid Amount': `$${booking.PaidAmount || '0.00'}`,
+      'Payment Method': booking.PaymentMethod || 'N/A',
+      'Status': booking.Status || 'N/A',
+      'Booking Time': booking.bookingTime || 'N/A',
+      'Created At': formatDateTime(booking.createdAt) || 'N/A',
+      'Updated At': formatDateTime(booking.updatedAt) || 'N/A'
+    }));
 
-    const generatePDFReport = (reportData, reportTitle) => {
-    const doc = new jsPDF();
-    const today = new Date().toLocaleDateString();
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Bookings");
     
-    // Add header
-    doc.setFontSize(20);
-    doc.setTextColor(40, 53, 147);
-    doc.text(reportTitle, 105, 15, null, null, 'center');
-    
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Generated: ${today}`, 105, 22, null, null, 'center');
-    
-    // Add summary
-    doc.setFontSize(14);
-    doc.text('Report Summary', 14, 32);
-    
+    // Add summary data to a new sheet
     const summaryData = [
-      { label: 'Report Title', value: reportTitle },
-      { label: 'Total Records', value: reportData.length },
-      { label: 'Generated Date', value: today }
+      ["Report Name", fileName],
+      ["Total Records", data.length],
+      ["Generated Date", new Date().toLocaleDateString('en-GB')],
+      ["", ""],
+      ["First Booking Date", formatDateDDMMYYYY(sortedData[0]?.FromDate?.S || sortedData[0]?.FromDate)],
+      ["Last Booking Date", formatDateDDMMYYYY(sortedData[sortedData.length-1]?.ToDate?.S || sortedData[sortedData.length-1]?.ToDate)],
+      ["", ""],
+      ["Metric", "Value"],
+      ["Total Orders", totalOrders],
+      ["Total Pickups", totalPickups],
+      ["Total Drops", totalDrops],
+      ["Total Sales", `$${totalSales.toFixed(2)}`]
     ];
     
-    summaryData.forEach((item, index) => {
-      const y = 40 + index * 10;
-      doc.text(`${item.label}: ${item.value}`, 14, y);
-    });
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
     
-    // Add bookings table with ALL fields
-    doc.setFontSize(14);
-    doc.text('Booking Details', 14, 70);
-    
-    const headers = [
-      'Order ID',
-      'Customer Name',
-      'Email',
-      'Phone',
-      'Airport',
-      'Location',
-      'Parking Slot',
-      'Car Number',
-      'From Date',
-      'To Date',
-      'Paid Amount',
-      'Payment Method',
-      'Status',
-      'Booking Date',
-      'Booking Time',
-      'Created At',
-      'Updated At'
-    ];
-    
-    const rows = reportData.map(booking => [
-      booking.OrderId || 'N/A',
-      booking.ParkingName?.substring(0, 20) || 'N/A',
-      booking.CustomerEmail || 'N/A',
-      booking.CustomerPhone || 'N/A',
-      booking.Airport || 'N/A',
-      booking.Location || 'N/A',
-      booking.ParkingSlot || 'N/A',
-      booking.CarNumber || 'N/A',
-      formatDisplayDate(booking.FromDate) || 'N/A',
-      formatDisplayDate(booking.ToDate) || 'N/A',
-      `$${booking.PaidAmount || '0.00'}`,
-      booking.PaymentMethod || 'N/A',
-      booking.Status || 'N/A',
-      booking.bookingDate || 'N/A',
-      booking.bookingTime || 'N/A',
-      formatDateTime(booking.createdAt) || 'N/A',
-      formatDateTime(booking.updatedAt) || 'N/A'
-    ]);
-    
-    autoTable(doc, {
-      startY: 75,
-      head: [headers],
-      body: rows,
-      theme: 'grid',
-      styles: { fontSize: 6, cellPadding: 1.5 },
-      headStyles: { fillColor: [40, 53, 147] },
-      margin: { top: 75 },
-      tableWidth: 'wrap'
-    });
-    
-    // Add footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(10);
-      doc.text(
-        `Page ${i} of ${pageCount}`,
-        105,
-        doc.internal.pageSize.height - 10,
-        null,
-        null,
-        'center'
-      );
-    }
-    
-    doc.save(`${reportTitle.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+    XLSX.writeFile(workbook, `${fileName}.xlsx`);
   };
 
-  // Generate report for today's orders
-    const generateTodayOrdersReport = () => {
-      const today = getTodayDate();
-      const reportData = bookingData.filter(
-        booking => booking.bookingDate === today
-      );
-      generatePDFReport(reportData, "Today's Orders Report");
-    };
+  const formatDateDDMMYYYY = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Invalid Date";
+    
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  };
 
-  // Generate report for today's pickups
-  const generateTodayPickupsReport = () => {
+
+  const generateMainPDF = () => {
+    const reportData = filteredData.length > 0 ? filteredData : bookingData;
+    generatePDFReport(reportData, "Parking Report");
+  };
+
+  const generateMainExcel = () => {
+    const reportData = filteredData.length > 0 ? filteredData : bookingData;
+    exportToExcel(reportData, "Parking-Report");
+  };
+
+  const generatePDFReport = (reportData, reportTitle) => {
+  const doc = new jsPDF();
+  const today = new Date().toLocaleDateString('en-GB');
+  
+  // Add header
+  doc.setFontSize(20);
+  doc.setTextColor(40, 53, 147);
+  doc.text(reportTitle, 105, 15, null, null, 'center');
+  
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Generated: ${today}`, 105, 22, null, null, 'center');
+  
+  // Add summary
+  doc.setFontSize(14);
+  doc.text('Report Summary', 14, 32);
+  
+  const summaryData = [
+    { label: 'Report Title', value: reportTitle },
+    { label: 'Total Records', value: reportData.length },
+    { label: 'Generated Date', value: today }
+  ];
+  
+  summaryData.forEach((item, index) => {
+    const y = 40 + index * 10;
+    doc.text(`${item.label}: ${item.value}`, 14, y);
+  });
+  
+  // Sort data by FromDate (pickup date) - oldest first
+  const sortedData = [...reportData].sort((a, b) => {
+    const dateA = new Date(a.FromDate?.S || a.FromDate);
+    const dateB = new Date(b.FromDate?.S || b.FromDate);
+    return dateA - dateB;
+  });
+
+  // Add bookings table with ALL fields
+  doc.setFontSize(14);
+  doc.text('Booking Details', 14, 70);
+  
+  const headers = [
+    'Order ID',
+    'Customer Name',
+    'Phone',
+    'Booking Date',
+    'From Date',
+    'To Date',
+    'Location',
+    'Amount',
+    'Status'
+  ];
+  
+  const rows = sortedData.map(booking => [
+    booking.OrderId || 'N/A',
+    booking.ParkingName?.substring(0, 20) || 'N/A',
+    booking.CustomerPhone || 'N/A',
+    formatDateDDMMYYYY(booking.bookingDate?.S || booking.bookingDate),
+    formatDateDDMMYYYY(booking.FromDate?.S || booking.FromDate),
+    formatDateDDMMYYYY(booking.ToDate?.S || booking.ToDate),
+    `${booking.Location || 'N/A'} (${booking.Airport || 'N/A'})`.substring(0, 25),
+    `$${booking.PaidAmount || '0.00'}`,
+    booking.Status || 'N/A'
+  ]);
+
+  autoTable(doc, {
+    startY: 75,
+    head: [headers],
+    body: rows,
+    theme: 'grid',
+    styles: { 
+      fontSize: 8, 
+      cellPadding: 2,
+      valign: 'middle'
+    },
+    headStyles: { 
+      fillColor: [40, 53, 147],
+      textColor: 255,
+      fontStyle: 'bold'
+    },
+    columnStyles: {
+      0: { cellWidth: 'auto' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 'auto' },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 'auto' },
+      5: { cellWidth: 'auto' },
+      6: { cellWidth: 'auto' },
+      7: { cellWidth: 'auto' },
+      8: { cellWidth: 'auto' }
+    },
+    margin: { top: 75 },
+    tableWidth: 'wrap'
+  });
+  
+  // Add footer
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(10);
+    doc.text(
+      `Page ${i} of ${pageCount}`,
+      105,
+      doc.internal.pageSize.height - 10,
+      null,
+      null,
+      'center'
+    );
+  }
+  
+  doc.save(`${reportTitle.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+};
+
+  // Card-specific report functions
+  const generateTodayOrdersPDF = () => {
+    const today = getTodayDate();
+    const reportData = bookingData.filter(booking => booking.bookingDate === today);
+    generatePDFReport(reportData, "Today's Orders Report");
+  };
+
+  const generateTodayOrdersExcel = () => {
+    const today = getTodayDate();
+    const reportData = bookingData.filter(booking => booking.bookingDate === today);
+    exportToExcel(reportData, "Today's-Orders");
+  };
+  const generateTodayPickupsPDF = () => {
     const today = getTodayDate();
     const reportData = bookingData.filter(booking => {
       const fromDate = booking.FromDate?.split('T')[0];
@@ -478,8 +641,16 @@ export default function TodaysBookings() {
     generatePDFReport(reportData, "Today's Pickups Report");
   };
 
-  // Generate report for today's drops
-  const generateTodayDropsReport = () => {
+  const generateTodayPickupsExcel = () => {
+    const today = getTodayDate();
+    const reportData = bookingData.filter(booking => {
+      const fromDate = booking.FromDate?.split('T')[0];
+      return fromDate === today;
+    });
+    exportToExcel(reportData, "Today's-Pickups");
+  };
+
+  const generateTodayDropsPDF = () => {
     const today = getTodayDate();
     const reportData = bookingData.filter(booking => {
       const toDate = booking.ToDate?.split('T')[0];
@@ -488,9 +659,21 @@ export default function TodaysBookings() {
     generatePDFReport(reportData, "Today's Drops Report");
   };
 
-  // Generate report for all bookings
-  const generateTotalSalesReport = () => {
+  const generateTodayDropsExcel = () => {
+    const today = getTodayDate();
+    const reportData = bookingData.filter(booking => {
+      const toDate = booking.ToDate?.split('T')[0];
+      return toDate === today;
+    });
+    exportToExcel(reportData, "Today's-Drops");
+  };
+
+  const generateTotalSalesPDF = () => {
     generatePDFReport(bookingData, "Total Sales Report");
+  };
+
+  const generateTotalSalesExcel = () => {
+    exportToExcel(bookingData, "Total-Sales-Report");
   };
 
   const generateOrderId = async () => {
@@ -551,7 +734,62 @@ export default function TodaysBookings() {
     setBookingStatus("");
     setIsEdit(false);
     setIsModalOpen(false);
+    setDepartureTerminal("");
+    setDepartureFlightNumber("");
+    setReturnTerminal("");
+    setReturnFlightNumber("");
   };
+
+    // Add fetchTerminals function
+  const fetchTerminals = async (airportName) => {
+    try {
+      setLoadingTerminals(true);
+      const response = await fetch(`/api/airports?name=${encodeURIComponent(airportName)}`);
+      if (!response.ok) throw new Error('Failed to fetch airport data');
+      
+      const data = await response.json();
+      let terminalOptions = [];
+      
+      if (data && data.Terminals) {
+        if (!isNaN(data.Terminals)) {
+          const terminalCount = parseInt(data.Terminals);
+          terminalOptions = Array.from({ length: terminalCount }, (_, i) => ({
+            value: `Terminal ${i + 1}`,
+            label: `Terminal ${i + 1}`
+          }));
+        } else if (Array.isArray(data.Terminals)) {
+          terminalOptions = data.Terminals.map(terminal => ({
+            value: terminal.value || terminal.name || `Terminal ${terminal.id}`,
+            label: terminal.label || terminal.name || `Terminal ${terminal.id}`
+          }));
+        }
+      }
+      
+      if (terminalOptions.length === 0) {
+        terminalOptions = Array.from({ length: 5 }, (_, i) => ({
+          value: `Terminal ${i + 1}`,
+          label: `Terminal ${i + 1}`
+        }));
+      }
+      
+      setTerminals(terminalOptions);
+    } catch (error) {
+      console.error('Error fetching terminals:', error);
+      setTerminals(Array.from({ length: 5 }, (_, i) => ({
+        value: `Terminal ${i + 1}`,
+        label: `Terminal ${i + 1}`
+      })));
+    } finally {
+      setLoadingTerminals(false);
+    }
+  };
+
+  // Add effect to fetch terminals when airport changes
+  useEffect(() => {
+    if (airport) {
+      fetchTerminals(airport);
+    }
+  }, [airport]);
 
   const handleEdit = (item) => {
     setCurrentRecord(item);
@@ -571,6 +809,10 @@ export default function TodaysBookings() {
     setAirport(item.Airport || ""); // Make sure airport is set
     setParkingSlot(item.ParkingSlot || ""); // Make sure parking slot is set
     setBookingStatus(item.Status || "");
+    setDepartureTerminal(item.DepartureTerminal || "");
+    setDepartureFlightNumber(item.DepartureFlightNumber || "");
+    setReturnTerminal(item.ReturnTerminal || "");
+    setReturnFlightNumber(item.ReturnFlightNumber || "");
   };
 
   const handleDelete = (item) => {
@@ -633,8 +875,53 @@ export default function TodaysBookings() {
     {
       label: "Status", value: Status, onChange: setStatus, type: "autocomplete",
       options: [{ label: "Active", value: "active" }, { label: "Inactive", value: "inactive" }]
-    }
-  ];
+    },  
+  // travel details section
+  {
+    type: "section",
+    label: "Travel Details"
+  },
+  {
+    type: "row",
+    inputs: [
+      {
+        label: "Departure Terminal",
+        value: departureTerminal,
+        onChange: (e) => setDepartureTerminal(e.target.value),
+        type: "select",
+        options: terminals,
+        disabled: loadingTerminals
+      },
+      {
+        label: "Departure Flight Number",
+        value: departureFlightNumber,
+        onChange: (e) => setDepartureFlightNumber(e.target.value),
+        type: "text",
+        placeholder: "e.g. BA123"
+      }
+    ]
+  },
+  {
+    type: "row",
+    inputs: [
+      {
+        label: "Return Terminal",
+        value: returnTerminal,
+        onChange: (e) => setReturnTerminal(e.target.value),
+        type: "select",
+        options: terminals,
+        disabled: loadingTerminals
+      },
+      {
+        label: "Return Flight Number",
+        value: returnFlightNumber,
+        onChange: (e) => setReturnFlightNumber(e.target.value),
+        type: "text",
+        placeholder: "e.g. BA124"
+      }
+    ]
+  }
+];
 
     const handleSearchApply = () => {
       console.log("Search applied with:", { searchTerm, searchOption });
@@ -658,6 +945,12 @@ export default function TodaysBookings() {
       onClick: async () => {
         try {
           const now = new Date();
+          const bookingDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+          const bookingTime = now.toTimeString().split(' ')[0]; // HH:MM:SS format
+          
+          // Generate order ID first
+          const orderId = !isEdit ? await generateOrderId() : currentRecord.OrderId;
+
           const newRecord = {
             ...(isEdit && { id: currentRecord.id }),
             ParkingName: isEdit ? `${customerName} (edited by admin)` : `${customerName} (added by admin)`,
@@ -674,18 +967,31 @@ export default function TodaysBookings() {
             Airport: airport,
             ParkingSlot: parkingSlot,
             Status: bookingStatus || 'confirmed',
+            ...(!isEdit && { 
+              OrderId: orderId,
+              id: String(Date.now()),
+              createdAt: now.toISOString(),
+              bookingDate,
+              bookingTime
+            }),
+            updatedAt: now.toISOString(),
+            DepartureTerminal: departureTerminal,
+            DepartureFlightNumber: departureFlightNumber,
+            ReturnTerminal: returnTerminal,
+            ReturnFlightNumber: returnFlightNumber,
           };
 
-          if (!isEdit) {
-            newRecord.OrderId = await generateOrderId();
-            newRecord.id = String(Date.now());
-            newRecord.createdAt = now.toISOString();
-            newRecord.bookingDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
-            newRecord.bookingTime = now.toTimeString().split(' ')[0]; // HH:MM:SS format
-          }
+          // Process customer data
+          await processCustomerData({
+            ParkingName: customerName,
+            CustomerEmail: customerEmail,
+            CustomerPhone: customerPhone,
+            CarNumber: carNumber,
+            Airport: airport,
+            OrderId: orderId
+          });
 
-          newRecord.updatedAt = now.toISOString();
-
+          // Save booking
           const response = await fetch("/api/Todaysbooking", {
             method: isEdit ? "PUT" : "POST",
             headers: { 'Content-Type': 'application/json' },
@@ -696,6 +1002,23 @@ export default function TodaysBookings() {
             const error = await response.json();
             throw new Error(error.message || 'Failed to save booking');
           }
+
+          // Send email with all required fields
+          await sendBookingEmail({
+            customerName,
+            customerEmail,
+            orderId,
+            bookingDate,
+            fromDate,
+            fromTime,
+            toDate,
+            toTime,
+            airport,
+            carNumber,
+            parkingSlot,
+            paidAmount,
+            paymentMethod,
+          });
 
           await fetchData();
           clearForm();
@@ -736,86 +1059,113 @@ export default function TodaysBookings() {
 
   return (
     <div>
-          {/* Card Section - Updated without CardContent */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Total Orders Card */}
-      <Card className="bg-blue-50 p-4">
-        <CardHeader className="pb-2">
-          <p className="text-sm font-semibold text-blue-600">Total Orders Today</p>
-        </CardHeader>
-        <div className="p-2">
-          <p className="text-2xl font-bold">{totalOrders}</p>
-        </div>
-        <div className="flex justify-end">
-          <Button 
-            variant="solid"
-            className='text-blue-50 bg-blue-600'
-            onClick={generateTodayOrdersReport}
-          >
-            Generate Report
-          </Button>
-        </div>
-      </Card>
+    {/* Card Section - Updated without CardContent */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Orders Card */}
+        <Card className="bg-blue-50 p-4">
+          <CardHeader className="pb-2">
+            <p className="text-sm font-semibold text-blue-600">Total Orders Today</p>
+          </CardHeader>
+          <div className="p-2">
+            <p className="text-2xl font-bold">{totalOrders}</p>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="solid"
+              className='text-blue-50 bg-blue-600'
+              onClick={generateTodayOrdersPDF}
+            >
+              PDF
+            </Button>
+            <Button 
+              variant="solid"
+              className='text-blue-50 bg-green-600'
+              onClick={generateTodayOrdersExcel}
+            >
+              Excel
+            </Button>
+          </div>
+        </Card>
 
-      {/* Total Pickups Card */}
-      <Card className="bg-green-50 p-4">
-        <CardHeader className="pb-2">
-          <p className="text-sm font-semibold text-green-600">Total Pickups</p>
-        </CardHeader>
-        <div className="p-2">
-          <p className="text-2xl font-bold">{totalPickups}</p>
-        </div>
-        <div className="flex justify-end">
-          <Button 
-            variant="solid"
-            className='text-green-50 bg-green-600'
-            onClick={generateTodayPickupsReport}
-          >
-            Generate Report
-          </Button>
-        </div>
-      </Card>
+        {/* Total Pickups Card */}
+        <Card className="bg-green-50 p-4">
+          <CardHeader className="pb-2">
+            <p className="text-sm font-semibold text-green-600">Total Pickups</p>
+          </CardHeader>
+          <div className="p-2">
+            <p className="text-2xl font-bold">{totalPickups}</p>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="solid"
+              className='text-green-50 bg-blue-600'
+              onClick={generateTodayPickupsPDF}
+            >
+              PDF
+            </Button>
+            <Button 
+              variant="solid"
+              className='text-green-50 bg-green-600'
+              onClick={generateTodayPickupsExcel}
+            >
+              Excel
+            </Button>
+          </div>
+        </Card>
 
-      {/* Total Drops Card */}
-      <Card className="bg-yellow-50 p-4">
-        <CardHeader className="pb-2">
-          <p className="text-sm font-semibold text-yellow-600">Total Drops</p>
-        </CardHeader>
-        <div className="p-2">
-          <p className="text-2xl font-bold">{totalDrops}</p>
-        </div>
-        <div className="flex justify-end">
-          <Button 
-            variant="solid"
-            className='text-yellow-50 bg-yellow-600'
-            onClick={generateTodayDropsReport}
-          >
-            Generate Report
-          </Button>
-        </div>
-      </Card>
+        {/* Total Drops Card */}
+        <Card className="bg-yellow-50 p-4">
+          <CardHeader className="pb-2">
+            <p className="text-sm font-semibold text-yellow-600">Total Drops</p>
+          </CardHeader>
+          <div className="p-2">
+            <p className="text-2xl font-bold">{totalDrops}</p>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="solid"
+              className='text-yellow-50 bg-blue-600'
+              onClick={generateTodayDropsPDF}
+            >
+              PDF
+            </Button>
+            <Button 
+              variant="solid"
+              className='text-yellow-50 bg-green-600'
+              onClick={generateTodayDropsExcel}
+            >
+              Excel
+            </Button>
+          </div>
+        </Card>
 
-      {/* Total Sales Card */}
-      <Card className="bg-purple-50 p-4">
-        <CardHeader className="pb-2">
-          <p className="text-sm font-semibold text-purple-600">Total Sales</p>
-        </CardHeader>
-        <div className="p-2">
-          <p className="text-2xl font-bold">${totalSales.toFixed(2)}</p>
-        </div>
-        <div className="flex justify-end">
-          <Button 
-            variant="solid"
-            className='text-purple-50 bg-purple-600'
-            onClick={generateTotalSalesReport}
-          >
-            Generate Report
-          </Button>
-        </div>
-      </Card>
+        {/* Total Sales Card */}
+        <Card className="bg-purple-50 p-4">
+          <CardHeader className="pb-2">
+            <p className="text-sm font-semibold text-purple-600">Total Sales</p>
+          </CardHeader>
+          <div className="p-2">
+            <p className="text-2xl font-bold">${totalSales.toFixed(2)}</p>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="solid"
+              className='text-purple-50 bg-blue-600'
+              onClick={generateTotalSalesPDF}
+            >
+              PDF
+            </Button>
+            <Button 
+              variant="solid"
+              className='text-purple-50 bg-green-600'
+              onClick={generateTotalSalesExcel}
+            >
+              Excel
+            </Button>
+          </div>
+        </Card>
       </div>
-      
-      {/* Rest of your component remains the same */}
+
       <div className="bg-white p-4 rounded-lg shadow mb-6 mt-4">
         {/* Search row - all in one line */}
         <div className="flex flex-col sm:flex-row gap-3 mb-4 mt-4">
@@ -858,7 +1208,7 @@ export default function TodaysBookings() {
             <SelectItem value="pickup">Pickup Date</SelectItem>
             <SelectItem value="drop">Drop Date</SelectItem>
             <SelectItem value="pickup_drop">Pickup & Drop Date</SelectItem>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="all">All Dates</SelectItem>
           </Select>
           <Input
             type="date"
@@ -872,24 +1222,36 @@ export default function TodaysBookings() {
             value={filterToDate}
             onChange={(e) => setFilterToDate(e.target.value)}
           />
-          <Button
-            color="primary"
-            className="h-[56px]"
-            onClick={handleDateFilterApply}
-          >
-            Apply
-          </Button>
         </div>
-
         {/* Action buttons at bottom */}
+        {filtersActive && (
+            <Button 
+              color="default"
+              variant="bordered"
+              onClick={handleRemoveFilters}
+              className="ml-4"
+            >
+              Remove All Filters
+            </Button>
+          )}
         <div className="flex justify-between mt-6">
-          <Button
-            color="success"
-            variant="solid"
-            onClick={generateMainReport}
-          >
-            Generate Report
-          </Button>
+          <div>
+            <Button
+              color="success"
+              variant="solid"
+              onClick={generateMainPDF}
+              className="mr-2"
+            >
+              Generate PDF
+            </Button>
+            <Button
+              color="warning"
+              variant="solid"
+              onClick={generateMainExcel}
+            >
+              Generate Excel
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -909,19 +1271,35 @@ export default function TodaysBookings() {
         />
       </div>
 
+      
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <CircularProgress label="Loading..." size="lg" />
         </div>
       ) : (
-        <DynamicTable
-          columns={columns}
-          data={filteredData}
-          statusOptions={statusOptions}
-          value="bookings"
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        <>
+          <DynamicTable
+            columns={columns}
+            data={paginatedData}
+            statusOptions={statusOptions}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            currentPage={currentPage}
+            totalPages={totalPages}
+          />
+          
+          {filteredData.length > 0 && (
+            <div className="flex flex-col items-center py-4">
+              <Pagination 
+                color="secondary"
+                page={currentPage} 
+                total={totalPages} 
+                onChange={setCurrentPage}
+                className="mb-4"
+              />
+            </div>
+          )}
+        </>
       )}
 
       {showConfirm && recordToDelete && (

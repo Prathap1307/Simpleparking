@@ -8,6 +8,8 @@ import Parkingsspace from '@/components/adminpages/Parkings';
 import Available_locations from '@/components/adminpages/Locations';
 import TodaysBookings from '@/components/adminpages/Todaybooking';
 import BlogManagement from '@/components/adminpages/Blogmanage';
+import CustomerList from '@/components/adminpages/customerlist';
+
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -64,6 +66,8 @@ export default function DashboardPage() {
         <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Blogs' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Blogs')}>Blog Management</button>
         <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Website' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Website')}>Website Settings</button>
         <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Settings' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Settings')}>Settings</button>
+        <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Customerlist' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Customerlist')}>CustomerList</button>
+
 
         <button className="cursor-pointer text-left bg-red-600 px-4 py-2 rounded hover:bg-red-500 mt-auto transition-colors" onClick={handleLogout}>Logout</button>
       </div>
@@ -77,6 +81,7 @@ export default function DashboardPage() {
         {selected === 'Available_parkings' && <Parkingsspace />}
         {selected === 'Available_locations' && <Available_locations />}
         {selected === 'Blogs' && <BlogManagement />}
+        {selected === 'Customerlist' && <CustomerList />}
       </div>
     </div>
   );

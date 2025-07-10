@@ -28,21 +28,76 @@ export default function Parkingsearchcmp({
     );
   }
 
+  // Get the selected airport details
+  const selectedAirportDetails = airports.find(airport => airport.Airport_name === selectedAirport);
+  const isAirportActive = selectedAirportDetails?.Status === 'active';
+  const nextActivationDate = selectedAirportDetails?.NextActivation ? new Date(selectedAirportDetails.NextActivation) : null;
+
+  // Calculate min date for date pickers
+  const minDropOffDate = isAirportActive ? new Date() : nextActivationDate;
+
+  // Set time constraints only when airport is inactive
+  const getTimeConstraints = () => {
+    if (!isAirportActive && nextActivationDate) {
+      const minTime = new Date(nextActivationDate);
+      const maxTime = new Date(nextActivationDate);
+      maxTime.setHours(23, 59, 0, 0);
+      return { minTime, maxTime };
+    }
+    return { minTime: null, maxTime: null };
+  };
+
+  const { minTime, maxTime } = getTimeConstraints();
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const formErrors = {};
     const now = new Date();
 
+    // Create combined datetime objects for validation
+    const dropOffDateTime = dropOffDate && dropOffTime ? new Date(
+      dropOffDate.getFullYear(),
+      dropOffDate.getMonth(),
+      dropOffDate.getDate(),
+      dropOffTime.getHours(),
+      dropOffTime.getMinutes()
+    ) : null;
+
+    const pickupDateTime = pickupDate && pickupTime ? new Date(
+      pickupDate.getFullYear(),
+      pickupDate.getMonth(),
+      pickupDate.getDate(),
+      pickupTime.getHours(),
+      pickupTime.getMinutes()
+    ) : null;
+
     if (!selectedAirport) formErrors.airport = 'Please select an airport';
     if (!dropOffDate || !dropOffTime) formErrors.dropOff = 'Drop-off date and time required';
     if (!pickupDate || !pickupTime) formErrors.pickup = 'Pick-up date and time required';
-    if (pickupDate <= now) formErrors.pickup = 'Pick-up must be in the future';
-    if (pickupDate < dropOffDate) formErrors.pickupBeforeDropOff = 'Pick-up cannot be before Drop-off';
     
+    // Validate using combined datetime objects
+    if (dropOffDateTime && pickupDateTime) {
+      if (!isAirportActive && dropOffDateTime < nextActivationDate) {
+        formErrors.dropOff = `Drop-off must be after ${nextActivationDate.toLocaleString()}`;
+      }
+      
+      if (!isAirportActive && pickupDateTime < nextActivationDate) {
+        formErrors.pickup = `Pick-up must be after ${nextActivationDate.toLocaleString()}`;
+      }
+      
+      if (pickupDateTime <= now) {
+        formErrors.pickup = 'Pick-up must be in the future';
+      }
+      
+      if (pickupDateTime < dropOffDateTime) {
+        formErrors.pickupBeforeDropOff = 'Pick-up cannot be before Drop-off';
+      }
+    }
+
     const Datetimeinfo = {
-      dropOffDate : dropOffDate , 
-      dropOffTime : dropOffTime , 
-      airports : airports
+      dropOffDate: dropOffDate, 
+      dropOffTime: dropOffTime, 
+      airports: airports
     } 
 
     sessionStorage.setItem('Datetimeinfo', JSON.stringify(Datetimeinfo));
@@ -66,13 +121,16 @@ export default function Parkingsearchcmp({
               onChange={(e) => {
                 setSelectedAirport(e.target.value);
                 setErrors({...errors, airport: ''});
+                // Reset dates when airport changes
+                setDropOffDate(null);
+                setPickupDate(null);
               }}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
             >
               <option value="">Select an airport</option>
               {airports.map((airport) => (
                 <option key={airport.id} value={airport.Airport_name}>
-                  {airport.Airport_name}
+                  {airport.Airport_name} {airport.Status === 'inactive' ? '(Inactive)' : ''}
                 </option>
               ))}
             </select>
@@ -88,6 +146,27 @@ export default function Parkingsearchcmp({
             </p>
           )}
         </div>
+        {selectedAirport && !isAirportActive && nextActivationDate && (
+            <div className="mt-4 p-3 bg-red-50 border border-indigo-100 rounded-lg">
+              <p className="text-sm text-red-700 flex items-start">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0 text-red-500" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                  />
+                </svg>
+                <span>Note: {selectedAirport} next available time is {nextActivationDate.toLocaleString()}</span>
+              </p>
+            </div>
+          )}
 
         {/* Drop-off Section */}
         <div>
@@ -100,10 +179,11 @@ export default function Parkingsearchcmp({
                   setDropOffDate(date);
                   setErrors({...errors, dropOff: ''});
                 }}
-                minDate={new Date()}
+                minDate={minDropOffDate}
                 placeholderText="Select date"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 dateFormat="dd/MM/yyyy"
+                filterDate={!isAirportActive ? (date) => date >= nextActivationDate : undefined}
               />
             </div>
             <div>
@@ -120,6 +200,8 @@ export default function Parkingsearchcmp({
                 dateFormat="h:mm aa"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholderText="Select time"
+                minTime={minTime}
+                maxTime={maxTime}
               />
             </div>
           </div>
@@ -141,10 +223,11 @@ export default function Parkingsearchcmp({
                   setPickupDate(date);
                   setErrors({...errors, pickup: '', pickupBeforeDropOff: ''});
                 }}
-                minDate={dropOffDate}
+                minDate={dropOffDate || minDropOffDate}
                 placeholderText="Select date"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 dateFormat="dd/MM/yyyy"
+                filterDate={!isAirportActive ? (date) => date >= nextActivationDate : undefined}
               />
             </div>
             <div>
@@ -161,9 +244,31 @@ export default function Parkingsearchcmp({
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholderText="Select time"
                 dateFormat="h:mm aa"
+                minTime={minTime}
+                maxTime={maxTime}
               />
             </div>
           </div>
+          <div className="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+            <p className="text-sm text-indigo-700 flex items-start">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0 text-indigo-500" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+              <span>Note: Discount coupons can be applied at checkout</span>
+            </p>
+          </div>
+          
           {(errors.pickup || errors.pickupBeforeDropOff) && (
             <p className="mt-1 text-sm text-red-600">
               {errors.pickup || errors.pickupBeforeDropOff}

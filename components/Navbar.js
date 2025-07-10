@@ -94,7 +94,7 @@ export default function Navbarcmp() {
               className="ml-4"
             >
               <Link
-                href="/login"
+                href="/Manage-booking"
                 className={`px-5 py-2.5 rounded-full font-medium transition-all relative overflow-hidden group ${
                   scrolled ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white' : 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white'
                 }`}

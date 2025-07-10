@@ -177,7 +177,7 @@ export const PrintIcon = (props) => {
   );
 };
 
-const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete }) => {
+const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete, currentPage, totalPages }) => {
   const generatePDF = (item) => {
     // Convert 30cm x 16cm to pixels (1cm ≈ 28.35px)
     const width = 30 * 28.35;
@@ -349,23 +349,29 @@ const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete }) => {
   }, [statusOptions]);
 
   return (
-    <Table aria-label="Dynamic table">
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody items={data}>
-        {(item) => (
-          <TableRow key={item.id}>
-            {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  );
-};
+      <div>
+        <Table aria-label="Dynamic table">
+          <TableHeader columns={columns}>
+            {(column) => (
+              <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
+                {column.name}
+              </TableColumn>
+            )}
+          </TableHeader>
+          <TableBody items={data}>
+            {(item) => (
+              <TableRow key={`${item.id}-${currentPage}`}>
+                {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+        
+        <div className="mt-4 text-small text-default-500">
+          Page {currentPage} of {totalPages} • {data.length} records
+        </div>
+      </div>
+    );
+  };
 
 export default DynamicTable;

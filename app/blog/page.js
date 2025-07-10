@@ -194,7 +194,7 @@ const BlogHero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            ParkEase Blog
+            Simpleparking Blog
           </motion.h1>
           <motion.p 
             className="text-xl text-gray-300 mb-8"
@@ -219,10 +219,10 @@ const BlogHero = () => {
   );
 };
 
-const FeaturedPost = ({ onReadMore }) => {
+const FeaturedPost = ({ featuredPost, onReadMore }) => {
   const [hovered, setHovered] = useState(false);
 
-  const handleReadMore = onReadMore || (() => {});
+  if (!featuredPost) return null;
   
   return (
     <section className="py-16 px-6">
@@ -249,8 +249,8 @@ const FeaturedPost = ({ onReadMore }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2">
             <div className="relative h-64 lg:h-auto">
               <Image
-                src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2670&auto=format&fit=crop"
-                alt="Featured post"
+                src={featuredPost.post_img || "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2670&auto=format&fit=crop"}
+                alt={featuredPost.Blog_title}
                 className="w-full h-full object-cover"
                 radius="none"
               />
@@ -267,30 +267,40 @@ const FeaturedPost = ({ onReadMore }) => {
             </div>
             <div className="p-8 lg:p-12 bg-gray-900">
               <div className="flex items-center text-sm text-gray-400 mb-4">
-                <span>June 15, 2023</span>
+                <span>{featuredPost.Date}</span>
                 <span className="mx-2">•</span>
-                <span className="px-3 py-1 bg-indigo-600/20 text-indigo-400 rounded-full">Travel Tips</span>
+                <span className="px-3 py-1 bg-indigo-600/20 text-indigo-400 rounded-full">
+                  {featuredPost.category}
+                </span>
               </div>
               <h3 className="text-2xl lg:text-3xl font-bold text-white mb-4">
-                10 Essential Airport Parking Hacks Every Traveler Should Know
+                {featuredPost.Blog_title}
               </h3>
               <p className="text-gray-400 mb-6">
-                Discover insider tips to save money, time, and stress when parking at airports. From secret discounts to optimal parking strategies, we've got you covered for your next trip.
+                {featuredPost.title_desc}
               </p>
               <div className="flex items-center">
                 <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center mr-4">
-                  <span className="text-white font-bold">J</span>
+                  <span className="text-white font-bold">
+                    {featuredPost.post_by?.charAt(0) || 'A'}
+                  </span>
                 </div>
                 <div>
-                  <p className="text-white font-medium">John Parker</p>
-                  <p className="text-xs text-gray-500">Travel Expert</p>
+                  <p className="text-white font-medium">
+                    {featuredPost.post_by || "Anonymous"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {featuredPost.category || "Author"}
+                  </p>
                 </div>
               </div>
               <motion.div
                 className="absolute bottom-8 right-8"
                 whileHover={{ scale: 1.1 }}
               >
-                <MagneticButton onClick={onReadMore}>Read Full Article</MagneticButton>
+                <MagneticButton onClick={onReadMore}>
+                  Read Full Article
+                </MagneticButton>
               </motion.div>
             </div>
           </div>
@@ -300,76 +310,70 @@ const FeaturedPost = ({ onReadMore }) => {
   );
 };
 
+
 const BlogPage = () => {
   const [activeCategory, setActiveCategory] = useState('All');
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const router = useRouter();
   
-  // Sample blog data
-  const blogPosts = [
-    {
-      id: 1,
-      title: "How to Find the Cheapest Airport Parking During Peak Season",
-      excerpt: "Learn strategies to secure affordable parking even during busy travel periods.",
-      date: "June 10, 2023",
-      category: "Parking Hacks",
-      imageUrl: "https://images.unsplash.com/photo-1470004914212-05527e49370b?q=80&w=2574&auto=format&fit=crop"
-    },
-    {
-      id: 2,
-      title: "Heathrow Airport Parking: The Ultimate Guide",
-      excerpt: "Everything you need to know about parking options at London's busiest airport.",
-      date: "May 28, 2023",
-      category: "Airport Guides",
-      imageUrl: "https://images.unsplash.com/photo-1556388158-158ea5ccacbd?q=80&w=2670&auto=format&fit=crop"
-    },
-    {
-      id: 3,
-      title: "The Future of Smart Parking: What to Expect in 2024",
-      excerpt: "Exploring upcoming technologies that will revolutionize how we park at airports.",
-      date: "May 15, 2023",
-      category: "Company News",
-      imageUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2670&auto=format&fit=crop"
-    },
-    {
-      id: 4,
-      title: "Travel Light: Packing Tips for Stress-Free Airport Experience",
-      excerpt: "How packing efficiently can save you time and hassle at security and boarding.",
-      date: "April 30, 2023",
-      category: "Travel Tips",
-      imageUrl: "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?q=80&w=2670&auto=format&fit=crop"
-    },
-    {
-      id: 5,
-      title: "Off-Site vs On-Site Airport Parking: Pros and Cons",
-      excerpt: "A detailed comparison to help you decide which parking option suits your needs best.",
-      date: "April 18, 2023",
-      category: "Parking Hacks",
-      imageUrl: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?q=80&w=2670&auto=format&fit=crop"
-    },
-    {
-      id: 6,
-      title: "ParkEase Launches New Rewards Program for Frequent Travelers",
-      excerpt: "Earn points on every booking and redeem for free parking and exclusive benefits.",
-      date: "April 5, 2023",
-      category: "Company News",
-      imageUrl: "https://images.unsplash.com/photo-1552581234-26160f608093?q=80&w=2670&auto=format&fit=crop"
-    }
-  ];
+  useEffect(() => {
+    const fetchBlogPosts = async () => {
+      try {
+        const response = await fetch('/api/blog_post');
+        if (!response.ok) {
+          throw new Error('Failed to fetch blog posts');
+        }
+        const data = await response.json();
+        setBlogPosts(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchBlogPosts();
+  }, []);
 
   const handleReadMore = (postId) => {
     router.push(`/blog/${postId}`);
   };
 
+  // Get the first post as featured or a specific featured post
+  const featuredPost = blogPosts.length > 0 ? blogPosts[0] : null;
+  
   const filteredPosts = activeCategory === 'All' 
     ? blogPosts 
     : blogPosts.filter(post => post.category === activeCategory);
 
+  if (loading) {
+    return (
+      <div className="bg-gray-900 min-h-screen flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gray-900 min-h-screen flex items-center justify-center">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-900 text-white">
       <BlogHero />
       
-      <FeaturedPost onReadMore={() => handleReadMore(1)} /> 
+      {featuredPost && (
+        <FeaturedPost 
+          featuredPost={featuredPost} 
+          onReadMore={() => handleReadMore(featuredPost.id)} 
+        />
+      )}
       
       <section className="py-16 px-6">
         <div className="max-w-7xl mx-auto">
@@ -380,7 +384,16 @@ const BlogPage = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredPosts.map((post, index) => (
-              <BlogCard key={post.id} index={index} {...post} onReadMore={() => handleReadMore(post.id)} />
+              <BlogCard 
+                key={post.id} 
+                index={index} 
+                title={post.Blog_title}
+                excerpt={post.title_desc}
+                date={post.Date}
+                category={post.category}
+                imageUrl={post.post_img || "https://images.unsplash.com/photo-1452421822248-d4c2b47f0c81?q=80&w=2670&auto=format&fit=crop"}
+                onReadMore={() => handleReadMore(post.id)}
+              />
             ))}
           </div>
           
@@ -405,7 +418,6 @@ const BlogPage = () => {
           </motion.div>
         </div>
       </section>
-      
       <section className="py-16 px-6 bg-gray-800/50">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h2 
