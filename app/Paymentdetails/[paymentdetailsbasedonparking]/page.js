@@ -123,7 +123,7 @@ const CheckoutForm = ({
 
   const sendBookingEmail = async (bookingDetails) => {
     try {
-      const response = await fetch('/api/send-booking-email', {
+      const response = await fetch('/api/sendbookingemail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
