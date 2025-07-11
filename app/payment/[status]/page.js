@@ -136,7 +136,7 @@ export default function PaymentStatusPage() {
 
       <div className="space-y-3">
         {safeStatus === 'success' && (
-          <Link href="/dashboard" passHref>
+          <Link href="/Manage-booking" passHref>
             <Button color="primary" className="w-full">
               View Your Bookings
             </Button>
