@@ -1,3 +1,5 @@
+//components/pages/Homepage
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -8,6 +10,7 @@ import Parkingsearchcmp from '@/components/parkingsearch';
 import LoadingCard from '@/components/Loading';
 import { Image } from '@heroui/react';
 import Footer from '@/components/Footer';
+
 
 const Homepage = () => {
   const [airports, setAirports] = useState([]);
@@ -336,7 +339,7 @@ const Homepage = () => {
         
         <div id='Searchfrom' className="absolute top-0 left-0 w-full h-full flex items-center justify-center px-4 z-10">
           <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6">
-            <div className="w-full md:w-1/2 text-center md:text-left">
+            <div className="w-full md:w-1/2 text-center md:text-left mt-5 md:mt-0">
               <motion.p 
                 className="text-white text-2xl lg:text-4xl font-semibold cursor-pointer"
                 initial={{ opacity: 0, y: 20 }}
