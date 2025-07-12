@@ -1,5 +1,3 @@
-//components/pages/Homepage
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';

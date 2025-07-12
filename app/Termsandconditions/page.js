@@ -127,6 +127,8 @@ const TermsAndConditions = () => {
                 <li>We are not responsible for indirect or consequential losses (e.g., missed flights, loss of earnings, etc.). Ensure you have appropriate travel insurance.</li>
                 <li>Information listed on our website is based on details provided by the service providers. While we strive for accuracy, we cannot guarantee completeness or ongoing accuracy.</li>
                 <li>We do not endorse or guarantee the standards of any provider. Always review their terms before booking.</li>
+                <li>A note that photos displayed (e.g., parking images) may or may not reflect actual conditions.</li>
+                <li>A statement that booking with Simple Parking means you accept the Terms and Conditions.</li>
               </ul>
             </section>
 

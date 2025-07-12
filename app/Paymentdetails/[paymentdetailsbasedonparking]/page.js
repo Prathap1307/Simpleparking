@@ -872,6 +872,7 @@ export default function PaymentPage() {
                   </div>
                 </CardBody>
               </Card>
+              <p>hiii</p>
               {clientSecret && (
                 <div className="mt-8 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                   <Elements stripe={stripePromise} options={{ 
