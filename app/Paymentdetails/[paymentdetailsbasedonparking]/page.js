@@ -62,7 +62,8 @@ const CheckoutForm = ({
   searchData, 
   totalPrice,
   onProcessingChange, 
-  couponInput
+  couponInput,
+  savings
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -869,7 +870,6 @@ export default function PaymentPage() {
                   </div>
                 </CardBody>
               </Card>
-
               {clientSecret && (
                 <div className="mt-8 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                   <Elements stripe={stripePromise} options={{ 
@@ -877,7 +877,7 @@ export default function PaymentPage() {
                     appearance: {
                       theme: 'stripe',
                       variables: {
-                        colorPrimary: '#3b82f6',
+                        colorPrimary: '#171c23ff',
                         borderRadius: '8px'
                       }
                     }
@@ -891,6 +891,7 @@ export default function PaymentPage() {
                       setTotalPrice={setTotalPrice}
                       onProcessingChange={setProcessing}
                       couponInput={couponInput}
+                      savings={savings}
                     />
                   </Elements>
                 </div>
