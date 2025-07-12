@@ -29,6 +29,9 @@ export const metadata = {
     "heathrow parking deals",
     "valet parking heathrow"
   ],
+  verification: {
+    google: "seozSF04L1eyNoQHrtx8OtH8Sou9mguXMGw3bL9BSeQ",
+  },
   openGraph: {
     title: "Heathrow Parking Under £30 | 70% Off | SimpleParking UK",
     description: "Affordable Heathrow meet & greet parking from just £30! Save 70% on official airport parking. Book online for the best rates.",
