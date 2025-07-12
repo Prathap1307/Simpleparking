@@ -308,7 +308,7 @@ const CheckoutForm = ({
           <PaymentElement options={{ layout: 'tabs' }} />
           <Button 
             color="primary" 
-            className="w-full mt-4" 
+            className="w-full mt-4 mb-10" 
             type="submit" 
             disabled={!stripe || processing}
           >
@@ -454,6 +454,8 @@ export default function PaymentPage() {
   useEffect(() => {
     if (!totalPrice) return;
 
+    setClientSecret(null); // Reset client secret to force recreation
+
     const createPaymentIntent = async () => {
       try {
         const response = await fetch("/api/create-payment-intent", {
@@ -463,7 +465,7 @@ export default function PaymentPage() {
             email: formData.email,
             licensePlate: formData.licensePlate,
             selectedParking: selectedParkingDetails?.title,
-            amount: Math.round(totalPrice * 100),
+            amount: Math.round(totalPrice * 100), // Make sure this is the discounted price
           }),
         });
 
@@ -476,7 +478,8 @@ export default function PaymentPage() {
     };
 
     createPaymentIntent();
-  }, [totalPrice, formData.email, formData.licensePlate]);
+  }, [totalPrice, formData.email, formData.licensePlate, savings]);
+
 
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
@@ -615,34 +618,33 @@ export default function PaymentPage() {
 
     console.log("Applying coupon:", couponInput);
     const couponResult = apply_coupon(selectedAirport, couponInput, couponsData);
-    
-    if (couponResult) {
-      console.log("Coupon applied successfully:", couponResult);
-      
-      let discountAmount = 0;
-      let newPrice = totalPrice;
-      
-      if (couponResult.discountType === "fixed") {
-        discountAmount = parseFloat(couponResult.value);
-        newPrice = totalPrice - discountAmount;
-      } else if (couponResult.discountType === "percentage") {
-        discountAmount = totalPrice * (parseFloat(couponResult.value) / 100);
-        newPrice = totalPrice - discountAmount;
-      }
-      
-      const finalPrice = Math.max(newPrice, 0);
-      console.log(`New price after coupon: £${finalPrice}`);
-      
-      setSavings(prev => ({
-        ...prev,
-        coupon: {
-          amount: discountAmount,
-          type: couponResult.discountType,
-          value: couponResult.value
+
+      if (couponResult) {
+        const originalPrice = totalPrice + (savings.coupon.amount + savings.offer.amount); // Calculate original price
+        let discountAmount = 0;
+        let newPrice = originalPrice; // Start from original price
+        
+        if (couponResult.discountType === "fixed") {
+          discountAmount = parseFloat(couponResult.value);
+          newPrice = originalPrice - discountAmount;
+        } else if (couponResult.discountType === "percentage") {
+          discountAmount = originalPrice * (parseFloat(couponResult.value) / 100);
+          newPrice = originalPrice - discountAmount;
         }
-      }));
-      
-      setTotalPrice(finalPrice);
+        
+        const finalPrice = Math.max(newPrice, 0);
+        
+        setSavings(prev => ({
+          ...prev,
+          coupon: {
+            amount: discountAmount,
+            type: couponResult.discountType,
+            value: couponResult.value
+          }
+        }));
+        
+        setTotalPrice(finalPrice);
+
       setcouponSuccess(true);
       setcouponNotWorking(false);
       setconscouponApplied(true);
