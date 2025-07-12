@@ -16,10 +16,10 @@ export const metadata = {
   title: "Heathrow Parking Under £30 | 70% Off | SimpleParking UK",
   description: "Affordable Heathrow meet & greet parking from just £30! Save 70% on official airport parking. Book online for the best rates.",
     icons: {
-    icon: "/logo.svg", // Using ICO format for reliability
-    shortcut: "/logo.svg",
-    apple: "/logo.svg", // Optional but recommended
-  },
+      icon: "/favicon.ico",
+      shortcut: "/favicon-32x32.png",
+      apple: "/apple-touch-icon.png",
+    },
   keywords: [
     "heathrow airport parking",
     "london airport parking",
