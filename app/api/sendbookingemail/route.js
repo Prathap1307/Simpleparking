@@ -68,7 +68,13 @@ export async function POST(request) {
       Departure_Terminal: bookingDetails.departureTerminal || 'Not specified',
       Departure_Flight: bookingDetails.departureFlightNumber || 'Not specified',
       Arrival_Terminal: bookingDetails.returnTerminal || 'Not specified',
-      Arrival_Flight: bookingDetails.returnFlightNumber || 'Not specified'
+      Arrival_Flight: bookingDetails.returnFlightNumber || 'Not specified',
+      couponApplied:bookingDetails.couponApplied,
+      offerApplied:bookingDetails.offerApplied,
+      couponDetails:bookingDetails.couponDetails,
+      offerDetails:bookingDetails.offerDetails,
+      originalPrice:bookingDetails.originalPrice,
+      totalSavings:bookingDetails.totalSavings,
     };
 
     const emailPayload = {

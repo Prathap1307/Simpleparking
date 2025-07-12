@@ -31,8 +31,6 @@ const ManageBooking = () => {
       }
 
       const allBookings = await response.json();
-      console.log('All bookings:', allBookings);
-
       const foundBooking = allBookings.find(booking => {
         const bookingIdMatches = String(booking.OrderId).trim().toLowerCase() === orderId.trim().toLowerCase();
         const emailMatches = String(booking.CustomerEmail).trim().toLowerCase() === email.trim().toLowerCase();
@@ -40,8 +38,6 @@ const ManageBooking = () => {
       });
 
       if (foundBooking) {
-        // Transform DynamoDB object to simpler structure
-        console.log("foundBooking",foundBooking)
         const transformedBooking = {
           id: foundBooking.OrderId,
           Airport: foundBooking.Airport,
@@ -66,7 +62,15 @@ const ManageBooking = () => {
           Status: foundBooking.Status,
           ToDate: foundBooking.ToDate,
           ToTime: foundBooking.ToTime,
-          updatedAt: foundBooking.updatedAt
+          updatedAt: foundBooking.updatedAt,
+          // Add coupon/offer fields
+          HasDiscount: foundBooking.HasDiscount || false,
+          CouponApplied: foundBooking.CouponApplied || false,
+          OfferApplied: foundBooking.OfferApplied || false,
+          CouponDetails: foundBooking.CouponDetails || '',
+          OfferDetails: foundBooking.OfferDetails || '',
+          OriginalPrice: foundBooking.OriginalPrice || foundBooking.PaidAmount,
+          TotalSavings: foundBooking.TotalSavings || '0.00'
         };
         
         setBookingData(transformedBooking);
@@ -124,7 +128,6 @@ const ManageBooking = () => {
     doc.setTextColor(...primaryColor);
     doc.setFont('helvetica', 'bold');
     doc.rect(2, 2, 206, 26, 'F');
-
     doc.text('PARKING INVOICE', 105, 20, { align: 'center' });
 
     // Invoice details
@@ -174,6 +177,46 @@ const ManageBooking = () => {
       yPos += 7;
     });
 
+    // Discount information if applicable
+    if (bookingData.HasDiscount) {
+      doc.setFontSize(12);
+      doc.setTextColor(...primaryColor);
+      doc.text('Discount Information', 15, yPos + 10);
+      yPos += 15;
+
+      if (bookingData.CouponApplied) {
+        doc.setFontSize(10);
+        doc.setTextColor(...secondaryColor);
+        doc.text('Coupon Applied:', 20, yPos);
+        doc.setTextColor(...darkColor);
+        doc.text(bookingData.CouponDetails || 'N/A', 60, yPos);
+        yPos += 7;
+      }
+
+      if (bookingData.OfferApplied) {
+        doc.setFontSize(10);
+        doc.setTextColor(...secondaryColor);
+        doc.text('Offer Applied:', 20, yPos);
+        doc.setTextColor(...darkColor);
+        doc.text(bookingData.OfferDetails || 'N/A', 60, yPos);
+        yPos += 7;
+      }
+
+      doc.setFontSize(10);
+      doc.setTextColor(...secondaryColor);
+      doc.text('Original Price:', 20, yPos);
+      doc.setTextColor(...darkColor);
+      doc.text(`£${parseFloat(bookingData.OriginalPrice || bookingData.PaidAmount || 0).toFixed(2)}`, 60, yPos);
+      yPos += 7;
+
+      doc.setFontSize(10);
+      doc.setTextColor(...secondaryColor);
+      doc.text('Total Savings:', 20, yPos);
+      doc.setTextColor(0, 150, 0);
+      doc.text(`£${parseFloat(bookingData.TotalSavings || 0).toFixed(2)}`, 60, yPos);
+      yPos += 10;
+    }
+
     // Payment details header
     doc.setFontSize(14);
     doc.setTextColor(...primaryColor);
@@ -203,13 +246,30 @@ const ManageBooking = () => {
       yPos += 7;
     });
 
-    // Total amount
+    // Total amount section
     doc.setFontSize(12);
     doc.setTextColor(...darkColor);
     doc.setFont('helvetica', 'bold');
-    doc.text('Total Amount:', 140, yPos + 10);
-    doc.setTextColor(0, 150, 0);
-    doc.text(`£${parseFloat(bookingData.PaidAmount || 0).toFixed(2)}`, 170, yPos + 10);
+    
+    if (bookingData.HasDiscount) {
+      doc.text('Original Price:', 140, yPos + 5);
+      doc.text(`£${parseFloat(bookingData.OriginalPrice || bookingData.PaidAmount || 0).toFixed(2)}`, 170, yPos + 5);
+      
+      doc.text('Discounts Applied:', 140, yPos + 12);
+      doc.setTextColor(220, 0, 0);
+      doc.text(`-£${parseFloat(bookingData.TotalSavings || 0).toFixed(2)}`, 170, yPos + 12);
+      
+      doc.setDrawColor(200, 200, 200);
+      doc.line(140, yPos + 15, 190, yPos + 15);
+      
+      doc.setTextColor(0, 150, 0);
+      doc.text('Final Amount:', 140, yPos + 22);
+      doc.text(`£${parseFloat(bookingData.PaidAmount || 0).toFixed(2)}`, 170, yPos + 22);
+    } else {
+      doc.text('Total Amount:', 140, yPos + 10);
+      doc.setTextColor(0, 150, 0);
+      doc.text(`£${parseFloat(bookingData.PaidAmount || 0).toFixed(2)}`, 170, yPos + 10);
+    }
 
     // Footer
     doc.setFontSize(8);
@@ -234,6 +294,40 @@ const ManageBooking = () => {
     if (searchSection) {
       searchSection.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const renderDiscountInfo = () => {
+    if (!bookingData.HasDiscount) return null;
+
+    return (
+      <div className="bg-gray-900/50 p-6 rounded-xl">
+        <h3 className="text-lg font-semibold mb-4 text-indigo-400">Discount Information</h3>
+        <div className="space-y-3">
+          {bookingData.CouponApplied && (
+            <div>
+              <p className="text-gray-400 text-sm">Coupon Applied</p>
+              <p className="font-medium text-green-400">{bookingData.CouponDetails || 'N/A'}</p>
+            </div>
+          )}
+          {bookingData.OfferApplied && (
+            <div>
+              <p className="text-gray-400 text-sm">Offer Applied</p>
+              <p className="font-medium text-green-400">{bookingData.OfferDetails || 'N/A'}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-gray-400 text-sm">Original Price</p>
+            <p className="font-medium">£{parseFloat(bookingData.OriginalPrice || bookingData.PaidAmount || 0).toFixed(2)}</p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-sm">Total Savings</p>
+            <p className="font-medium text-xl text-green-400">
+              £{parseFloat(bookingData.TotalSavings || 0).toFixed(2)}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -439,22 +533,47 @@ const ManageBooking = () => {
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Amount Paid</p>
-                    <p className="font-medium text-xl text-green-400">£{parseFloat(bookingData.PaidAmount || 0).toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">Booking Status</p>
-                    <p className="font-medium">
-                      <span className={`px-2 py-1 rounded-full text-sm ${
-                        bookingData.Status === 'confirmed' 
-                          ? 'bg-green-900/30 text-green-400' 
-                          : 'bg-yellow-900/30 text-yellow-400'
-                      }`}>
-                        {bookingData.Status || 'Confirmed'}
-                      </span>
+                    <p className="font-medium text-xl text-green-400">
+                      £{parseFloat(bookingData.PaidAmount || 0).toFixed(2)}
                     </p>
                   </div>
+                  {bookingData.HasDiscount && (
+                    <>
+                      <div>
+                        <p className="text-gray-400 text-sm">Original Price</p>
+                        <p className="font-medium">£{parseFloat(bookingData.OriginalPrice || bookingData.PaidAmount || 0).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm">Total Savings</p>
+                        <p className="font-medium text-green-400">
+                          £{parseFloat(bookingData.TotalSavings || 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
+
+              {/* Discount Information Section */}
+              {bookingData.HasDiscount && (
+                <div className="bg-gray-900/50 p-6 rounded-xl col-span-1 md:col-span-2">
+                  <h3 className="text-lg font-semibold mb-4 text-indigo-400">Discount Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {bookingData.CouponApplied && (
+                      <div className="bg-green-900/20 p-4 rounded-lg border border-green-800/50">
+                        <p className="text-gray-400 text-sm">Coupon Applied</p>
+                        <p className="font-medium text-green-400">{bookingData.CouponDetails || 'N/A'}</p>
+                      </div>
+                    )}
+                    {bookingData.OfferApplied && (
+                      <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-800/50">
+                        <p className="text-gray-400 text-sm">Offer Applied</p>
+                        <p className="font-medium text-blue-400">{bookingData.OfferDetails || 'N/A'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">

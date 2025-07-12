@@ -9,6 +9,7 @@ import Available_locations from '@/components/adminpages/Locations';
 import TodaysBookings from '@/components/adminpages/Todaybooking';
 import BlogManagement from '@/components/adminpages/Blogmanage';
 import CustomerList from '@/components/adminpages/customerlist';
+import CouponsAndOffers from '@/components/adminpages/Coupons_and_offer';
 
 
 export default function DashboardPage() {
@@ -65,7 +66,7 @@ export default function DashboardPage() {
         <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Available_locations' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Available_locations')}>Available Locations</button>
         <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Blogs' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Blogs')}>Blog Management</button>
         <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Website' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Website')}>Website Settings</button>
-        <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Settings' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Settings')}>Settings</button>
+        <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Coupons_And_Offers' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Coupons_And_Offers')}>Coupons and Offers</button>
         <button className={`cursor-pointer text-left px-4 py-2 rounded hover:bg-gray-700 transition-colors ${selected === 'Customerlist' ? 'bg-indigo-600' : 'bg-gray-800'}`} onClick={() => handleTabSelect('Customerlist')}>CustomerList</button>
 
 
@@ -77,7 +78,7 @@ export default function DashboardPage() {
         {selected === 'Today' && <TodaysBookings/>}
         {selected === 'All' && <span>All Bookings</span>}
         {selected === 'Website' && <span>Website Settings</span>}
-        {selected === 'Settings' && <Settingspage />}
+        {selected === 'Coupons_And_Offers' && <CouponsAndOffers />}
         {selected === 'Available_parkings' && <Parkingsspace />}
         {selected === 'Available_locations' && <Available_locations />}
         {selected === 'Blogs' && <BlogManagement />}

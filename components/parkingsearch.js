@@ -125,7 +125,8 @@ export default function Parkingsearchcmp({
                 setDropOffDate(null);
                 setPickupDate(null);
               }}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
+              variant="bordered"
+              className="w-full px-4 py-3 bg-gray-50 text-black border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
             >
               <option value="">Select an airport</option>
               {airports.map((airport) => (
@@ -181,7 +182,7 @@ export default function Parkingsearchcmp({
                 }}
                 minDate={minDropOffDate}
                 placeholderText="Select date"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-gray-50 text-black border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 dateFormat="dd/MM/yyyy"
                 filterDate={!isAirportActive ? (date) => date >= nextActivationDate : undefined}
               />
@@ -198,7 +199,7 @@ export default function Parkingsearchcmp({
                 timeIntervals={15}
                 timeCaption="Time"
                 dateFormat="h:mm aa"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-gray-50 text-black border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholderText="Select time"
                 minTime={minTime}
                 maxTime={maxTime}
@@ -225,7 +226,7 @@ export default function Parkingsearchcmp({
                 }}
                 minDate={dropOffDate || minDropOffDate}
                 placeholderText="Select date"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-gray-50 border text-black border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 dateFormat="dd/MM/yyyy"
                 filterDate={!isAirportActive ? (date) => date >= nextActivationDate : undefined}
               />
@@ -241,7 +242,7 @@ export default function Parkingsearchcmp({
                 showTimeSelectOnly
                 timeIntervals={15}
                 timeCaption="Time"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-gray-50 border text-black border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholderText="Select time"
                 dateFormat="h:mm aa"
                 minTime={minTime}

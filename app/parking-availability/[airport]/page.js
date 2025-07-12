@@ -134,7 +134,7 @@ export default function ParkingAvailability() {
                 details={slot.AvailableFacilities}
                 price={slot.price_per_day}
                 pricePerHour={slot.Price_per_hour}
-                imageUrl={slot.imageUrl}
+                imageUrl={slot.Displaypicture}
                 duration={duration}
                 index={index}
                 setSearching={setSearching}

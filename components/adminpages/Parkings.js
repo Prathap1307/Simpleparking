@@ -27,6 +27,7 @@ export default function Parkingsspace() {
   const [Space, setSpace] = useState("");
   const [StrikePrice, setStrikePrice] = useState("");
   const [AvailableFacilities, setAvailableFacilities] = useState("");
+  const [Displaypicture, setDisplaypicture] = useState("");
 
   // Fetch locations
   const [LocationsData, setLocationsData] = useState([]);
@@ -78,6 +79,7 @@ export default function Parkingsspace() {
     setStatus("active");
     setIsEditMode(false);
     setModalOpen(false);
+    setDisplaypicture("")
   };
 
   const handleDelete = (item) => {
@@ -130,6 +132,7 @@ export default function Parkingsspace() {
     setSpace(Number(item.Space) || "");
     setStrikePrice(Number(item.StrikePrice) || "");
     setAvailableFacilities(item.AvailableFacilities || "");
+    setDisplaypicture(item.Displaypicture)
     setStatus(item.Status || "active");
   };
 
@@ -152,6 +155,7 @@ export default function Parkingsspace() {
     { label: "Tax Name", value: Taxname, onChange: (e) => setTaxname(e.target.value), type: "text" },
     { label: "Available Space", value: Space, onChange: (e) => setSpace(e.target.value), type: "number" },
     { label: "Available Facilities", value: AvailableFacilities, onChange: (e) => setAvailableFacilities(e.target.value), type: "text" },
+    { label: "Display Picture", value: Displaypicture, onChange: (e) => setDisplaypicture(e.target.value), type: "text" },
     {
       label: "Status", value: Status, onChange: setStatus, type: "autocomplete",
       options: [{ label: "Active", value: "active" }, { label: "Inactive", value: "inactive" }]
@@ -180,6 +184,7 @@ export default function Parkingsspace() {
             Status,
             Space: Number(Space),
             AvailableFacilities,
+            Displaypicture,
             updatedAt: new Date().toISOString()
           };
 

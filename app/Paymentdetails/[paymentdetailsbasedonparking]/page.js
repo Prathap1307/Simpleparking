@@ -9,6 +9,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { motion, AnimatePresence } from "framer-motion";
 import { processCustomerData } from "@/utils/customerUtils";
+import { apply_coupon, apply_offer } from "@/utils/Couponsandoffers";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
@@ -60,7 +61,8 @@ const CheckoutForm = ({
   clientSecret, 
   searchData, 
   totalPrice,
-  onProcessingChange 
+  onProcessingChange, 
+  couponInput
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -163,7 +165,7 @@ const CheckoutForm = ({
         FromTime: searchData.dropOffTime,
         ToDate: searchData.pickupDate,
         ToTime: searchData.pickupTime,
-        PaidAmount: (totalPrice / 100).toFixed(2),
+        PaidAmount: totalPrice.toFixed(2),
         PaymentMethod: "card",
         CarNumber: formData.licensePlate,
         Airport: searchData.airport,
@@ -176,7 +178,19 @@ const CheckoutForm = ({
         DepartureTerminal: formData.departureTerminal,
         DepartureFlightNumber: formData.departureFlightNumber,
         ReturnTerminal: formData.returnTerminal,
-        ReturnFlightNumber: formData.returnFlightNumber
+        ReturnFlightNumber: formData.returnFlightNumber,
+          // Add coupon/offer details
+        HasDiscount: savings.coupon.amount > 0 || savings.offer.amount > 0,
+        CouponApplied: savings.coupon.amount > 0,
+        OfferApplied: savings.offer.amount > 0,
+        CouponDetails: savings.coupon.amount > 0 
+          ? `£${savings.coupon.amount.toFixed(2)}${savings.coupon.type === 'percentage' ? ` (${savings.coupon.value}%)` : ''} - ${couponInput}`
+          : null,
+        OfferDetails: savings.offer.amount > 0
+          ? `£${savings.offer.amount.toFixed(2)}${savings.offer.type === 'percentage' ? ` (${savings.offer.value}%)` : ''}`
+          : null,
+        OriginalPrice: (totalPrice + (savings.coupon.amount + savings.offer.amount)).toFixed(2),
+        TotalSavings: (savings.coupon.amount + savings.offer.amount).toFixed(2)
       };
 
       const customerData = {
@@ -207,7 +221,16 @@ const CheckoutForm = ({
         departureTerminal: bookingData.DepartureTerminal,
         departureFlightNumber: bookingData.DepartureFlightNumber,
         returnTerminal: bookingData.ReturnTerminal,
-        returnFlightNumber: bookingData.ReturnFlightNumber
+        returnFlightNumber: bookingData.ReturnFlightNumber,
+          // Add discount details to email
+        hasDiscount: bookingData.HasDiscount,
+        couponApplied: bookingData.CouponApplied,
+        offerApplied: bookingData.OfferApplied,
+        couponDetails: bookingData.CouponDetails,
+        offerDetails: bookingData.OfferDetails,
+        originalPrice: bookingData.OriginalPrice,
+        totalSavings: bookingData.TotalSavings
+
       });
       
       const bookingResponse = await createBooking(bookingData);
@@ -325,6 +348,27 @@ export default function PaymentPage() {
   const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [terminals, setTerminals] = useState([]);
   const [loadingTerminals, setLoadingTerminals] = useState(false);
+
+  const [couponApplied,setconscouponApplied ] = useState(false);
+  const [couponSuccess,setcouponSuccess ] = useState(false);
+  const [couponNotWorking,setcouponNotWorking ] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [currentOffer, setCurrentOffer] = useState(null);
+  const [selectedAirport, setSelectedAirport] = useState("");
+  const [couponsData, setCouponsData] = useState([]);
+
+  const [savings, setSavings] = useState({
+    coupon: { amount: 0, type: null, value: null },
+    offer: { amount: 0, type: null, value: null }
+  });
+
+  const resetSavings = () => {
+    setSavings({
+      coupon: { amount: 0, type: null, value: null },
+      offer: { amount: 0, type: null, value: null }
+    });
+  };
+
 
   const selectedParking = decodeURIComponent(params?.paymentdetailsbasedonparking || "London Luton Airport");
 
@@ -464,10 +508,28 @@ export default function PaymentPage() {
           <div className="flex justify-between mb-4">
             <span>To:</span>
             <span className="font-medium">
-               {formatDate(searchData?.pickupDate)} {formatTime(searchData?.pickupTime)}
+              {formatDate(searchData?.pickupDate)} {formatTime(searchData?.pickupTime)}
             </span>
           </div>
           <Divider />
+          {savings.coupon.amount > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>Coupon applied:</span>
+              <span>
+                - £{savings.coupon.amount.toFixed(2)}
+                {savings.coupon.type === 'percentage' ? ` (${savings.coupon.value}%)` : ''}
+              </span>
+            </div>
+          )}
+          {savings.offer.amount > 0 && (
+            <div className="flex justify-between text-green-600">
+              <span>Offer applied:</span>
+              <span>
+                - £{savings.offer.amount.toFixed(2)}
+                {savings.offer.type === 'percentage' ? ` (${savings.offer.value}%)` : ''}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between pt-2">
             <span>Total:</span>
             <div className="text-right">
@@ -478,6 +540,118 @@ export default function PaymentPage() {
       </CardBody>
     </Card>
   );
+
+  useEffect(() => {
+      if (searchData?.airport) {
+        setSelectedAirport(searchData.airport);
+        fetchCoupons(searchData.airport);
+      }
+    }, [searchData?.airport]);
+
+    useEffect(() => {
+      if (selectedAirport && couponsData.length > 0 && !currentOffer) {
+        console.log("Checking for offers...", couponsData);
+        const offer = apply_offer(selectedAirport, couponsData);
+        
+        if (offer) {
+          console.log("Found offer:", offer);
+          setCurrentOffer(offer);
+          
+          if (!couponApplied) {
+            let discountAmount = 0;
+            let newPrice = totalPrice;
+            
+            if (offer.discountType === "fixed") {
+              discountAmount = parseFloat(offer.value);
+              newPrice = totalPrice - discountAmount;
+            } else if (offer.discountType === "percentage") {
+              discountAmount = totalPrice * (parseFloat(offer.value) / 100);
+              newPrice = totalPrice - discountAmount;
+            }
+            
+            const finalPrice = Math.max(newPrice, 0);
+            console.log(`Applying offer: ${offer.value}${offer.discountType === 'percentage' ? '%' : '£'}. New price: £${finalPrice}`);
+            
+            setSavings(prev => ({
+              ...prev,
+              offer: {
+                amount: discountAmount,
+                type: offer.discountType,
+                value: offer.value
+              }
+            }));
+            
+            setTotalPrice(finalPrice);
+            setcouponSuccess(true);
+          }
+        } else {
+          console.log("No valid offers found");
+        }
+      }
+    }, [selectedAirport, couponsData, totalPrice, couponApplied, currentOffer]);
+
+  const fetchCoupons = async (airport) => {
+    try {
+      const response = await fetch(`/api/Couponsandoffers?airport=${encodeURIComponent(airport)}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Fetched coupons data:", data); // Debug log
+      setCouponsData(Array.isArray(data) ? data : []); // Ensure it's always an array
+    } catch (error) {
+      console.error("Error fetching coupons:", error);
+      setCouponsData([]); // Set empty array on error
+    }
+  };
+
+  const handleApplyCoupon = () => {
+    if (!couponInput.trim() || !selectedAirport) {
+      setcouponNotWorking(true);
+      setcouponSuccess(false);
+      return;
+    }
+
+    console.log("Applying coupon:", couponInput);
+    const couponResult = apply_coupon(selectedAirport, couponInput, couponsData);
+    
+    if (couponResult) {
+      console.log("Coupon applied successfully:", couponResult);
+      
+      let discountAmount = 0;
+      let newPrice = totalPrice;
+      
+      if (couponResult.discountType === "fixed") {
+        discountAmount = parseFloat(couponResult.value);
+        newPrice = totalPrice - discountAmount;
+      } else if (couponResult.discountType === "percentage") {
+        discountAmount = totalPrice * (parseFloat(couponResult.value) / 100);
+        newPrice = totalPrice - discountAmount;
+      }
+      
+      const finalPrice = Math.max(newPrice, 0);
+      console.log(`New price after coupon: £${finalPrice}`);
+      
+      setSavings(prev => ({
+        ...prev,
+        coupon: {
+          amount: discountAmount,
+          type: couponResult.discountType,
+          value: couponResult.value
+        }
+      }));
+      
+      setTotalPrice(finalPrice);
+      setcouponSuccess(true);
+      setcouponNotWorking(false);
+      setconscouponApplied(true);
+    } else {
+      console.log("Coupon application failed");
+      setcouponSuccess(false);
+      setcouponNotWorking(true);
+      setconscouponApplied(false);
+    }
+  };
 
   return (
     <div className="bg-blue-400">
@@ -630,6 +804,69 @@ export default function PaymentPage() {
                       </div>
                     </div>
                   </div>
+                  <div className="pt-4 border-t border-gray-200">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Coupons</h4>
+                    <div className="coupon-application-section p-4 border rounded-lg mb-4 bg-gray-50">
+                      <h3 className="text-lg font-semibold mb-2">Apply Coupon</h3>
+                      
+                      {currentOffer && !couponApplied && (
+                        <div className="active-offer-banner bg-blue-100 p-3 rounded mb-3">
+                          <p className="text-blue-800">
+                            Special offer available: {currentOffer.value} 
+                            {currentOffer.discountType === 'percentage' ? '% off' : '£ off'}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value)}
+                          placeholder="Enter coupon code"
+                          className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          disabled={couponApplied}
+                        />
+                        <button
+                          onClick={handleApplyCoupon}
+                          className={`px-4 py-2 rounded ${
+                            couponApplied 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                          }`}
+                          disabled={processing}
+                        >
+                          {couponApplied ? 'Applied' : 'Apply'}
+                        </button>
+                      </div>
+                      
+                      {couponSuccess && (
+                        <div className="mt-2">
+                          {savings.coupon.amount > 0 && (
+                            <p className="text-green-600 text-sm">
+                              Coupon applied! You saved £{savings.coupon.amount.toFixed(2)}
+                              {savings.coupon.type === 'percentage' ? ` (${savings.coupon.value}%)` : ''}
+                            </p>
+                          )}
+                          {savings.offer.amount > 0 && (
+                            <p className="text-green-600 text-sm">
+                              Offer applied! You saved £{savings.offer.amount.toFixed(2)}
+                              {savings.offer.type === 'percentage' ? ` (${savings.offer.value}%)` : ''}
+                            </p>
+                          )}
+                          <p className="text-sm font-medium">
+                            New total: £{totalPrice.toFixed(2)}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {couponNotWorking && (
+                        <p className="text-red-600 mt-2 text-sm">
+                          Invalid or expired coupon code
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </CardBody>
               </Card>
 
@@ -653,6 +890,7 @@ export default function PaymentPage() {
                       totalPrice={totalPrice}
                       setTotalPrice={setTotalPrice}
                       onProcessingChange={setProcessing}
+                      couponInput={couponInput}
                     />
                   </Elements>
                 </div>
@@ -673,7 +911,7 @@ export default function PaymentPage() {
           onClick={() => setShowMobileSummary(prev => !prev)}
         >
           <span className="text-white font-semibold text-lg">
-            £{totalPrice?.toFixed(2) || "0.00"}
+            £{totalPrice.toFixed(2)}
           </span>
           <span className="text-white font-semibold flex items-center space-x-2">
             <span>Booking Summary</span>

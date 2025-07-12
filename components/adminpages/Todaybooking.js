@@ -62,6 +62,15 @@ export default function TodaysBookings() {
   const [returnTerminal, setReturnTerminal] = useState("");
   const [returnFlightNumber, setReturnFlightNumber] = useState("");
 
+  //offer/coupon
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [offerApplied, setOfferApplied] = useState(false);
+  const [couponDetails, setCouponDetails] = useState("");
+  const [offerDetails, setOfferDetails] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
+  const [totalSavings, setTotalSavings] = useState("");
+
 
   // Date formatting helpers
     const formatDate = (dateString) => {
@@ -451,6 +460,13 @@ const filteredData = useMemo(() => {
       'Location': booking.Location || 'N/A',
       'Parking Slot': booking.ParkingSlot || 'N/A',
       'Car Number': booking.CarNumber || 'N/A',
+      'Has Discount': booking.HasDiscount ? 'Yes' : 'No',
+      'Coupon Applied': booking.CouponApplied ? 'Yes' : 'No',
+      'Coupon Details': booking.CouponDetails || 'N/A',
+      'Offer Applied': booking.OfferApplied ? 'Yes' : 'No',
+      'Offer Details': booking.OfferDetails || 'N/A',
+      'Original Price': `$${booking.OriginalPrice || booking.PaidAmount || '0.00'}`,
+      'Total Savings': `$${booking.TotalSavings || '0.00'}`,
       'Paid Amount': `$${booking.PaidAmount || '0.00'}`,
       'Payment Method': booking.PaymentMethod || 'N/A',
       'Status': booking.Status || 'N/A',
@@ -509,115 +525,196 @@ const filteredData = useMemo(() => {
   };
 
   const generatePDFReport = (reportData, reportTitle) => {
-  const doc = new jsPDF();
-  const today = new Date().toLocaleDateString('en-GB');
-  
-  // Add header
-  doc.setFontSize(20);
-  doc.setTextColor(40, 53, 147);
-  doc.text(reportTitle, 105, 15, null, null, 'center');
-  
-  doc.setFontSize(12);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Generated: ${today}`, 105, 22, null, null, 'center');
-  
-  // Add summary
-  doc.setFontSize(14);
-  doc.text('Report Summary', 14, 32);
-  
-  const summaryData = [
-    { label: 'Report Title', value: reportTitle },
-    { label: 'Total Records', value: reportData.length },
-    { label: 'Generated Date', value: today }
-  ];
-  
-  summaryData.forEach((item, index) => {
-    const y = 40 + index * 10;
-    doc.text(`${item.label}: ${item.value}`, 14, y);
-  });
-  
-  // Sort data by FromDate (pickup date) - oldest first
-  const sortedData = [...reportData].sort((a, b) => {
-    const dateA = new Date(a.FromDate?.S || a.FromDate);
-    const dateB = new Date(b.FromDate?.S || b.FromDate);
-    return dateA - dateB;
-  });
+    const doc = new jsPDF();
+    const today = new Date().toLocaleDateString('en-GB');
+    
+    // Add header
+    doc.setFontSize(20);
+    doc.setTextColor(40, 53, 147);
+    doc.text(reportTitle, 105, 15, null, null, 'center');
+    
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Generated: ${today}`, 105, 22, null, null, 'center');
+    
+    // Add summary
+    doc.setFontSize(14);
+    doc.text('Report Summary', 14, 32);
+    
+    const summaryData = [
+      { label: 'Report Title', value: reportTitle },
+      { label: 'Total Records', value: reportData.length },
+      { label: 'Generated Date', value: today },
+      { label: 'Total Discounts Applied', value: reportData.filter(b => b.HasDiscount).length }
+    ];
+    
+    summaryData.forEach((item, index) => {
+      const y = 40 + index * 10;
+      doc.text(`${item.label}: ${item.value}`, 14, y);
+    });
 
-  // Add bookings table with ALL fields
-  doc.setFontSize(14);
-  doc.text('Booking Details', 14, 70);
-  
-  const headers = [
-    'Order ID',
-    'Customer Name',
-    'Phone',
-    'Booking Date',
-    'From Date',
-    'To Date',
-    'Location',
-    'Amount',
-    'Status'
-  ];
-  
-  const rows = sortedData.map(booking => [
-    booking.OrderId || 'N/A',
-    booking.ParkingName?.substring(0, 20) || 'N/A',
-    booking.CustomerPhone || 'N/A',
-    formatDateDDMMYYYY(booking.bookingDate?.S || booking.bookingDate),
-    formatDateDDMMYYYY(booking.FromDate?.S || booking.FromDate),
-    formatDateDDMMYYYY(booking.ToDate?.S || booking.ToDate),
-    `${booking.Location || 'N/A'} (${booking.Airport || 'N/A'})`.substring(0, 25),
-    `$${booking.PaidAmount || '0.00'}`,
-    booking.Status || 'N/A'
-  ]);
+    // Calculate discount statistics
+    const totalDiscountAmount = reportData.reduce((sum, booking) => {
+      return sum + parseFloat(booking.TotalSavings || 0);
+    }, 0);
+    
+    const totalOriginalAmount = reportData.reduce((sum, booking) => {
+      return sum + parseFloat(booking.OriginalPrice || booking.PaidAmount || 0);
+    }, 0);
+    
+    const totalFinalAmount = reportData.reduce((sum, booking) => {
+      return sum + parseFloat(booking.PaidAmount || 0);
+    }, 0);
 
-  autoTable(doc, {
-    startY: 75,
-    head: [headers],
-    body: rows,
-    theme: 'grid',
-    styles: { 
-      fontSize: 8, 
-      cellPadding: 2,
-      valign: 'middle'
-    },
-    headStyles: { 
-      fillColor: [40, 53, 147],
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 'auto' },
-      3: { cellWidth: 'auto' },
-      4: { cellWidth: 'auto' },
-      5: { cellWidth: 'auto' },
-      6: { cellWidth: 'auto' },
-      7: { cellWidth: 'auto' },
-      8: { cellWidth: 'auto' }
-    },
-    margin: { top: 75 },
-    tableWidth: 'wrap'
-  });
-  
-  // Add footer
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
+    doc.text(`Total Original Amount: £${totalOriginalAmount.toFixed(2)}`, 14, 80);
+    doc.text(`Total Discounts: £${totalDiscountAmount.toFixed(2)}`, 14, 90);
+    doc.text(`Total Final Amount: £${totalFinalAmount.toFixed(2)}`, 14, 100);
+    
+    // Sort data by FromDate (pickup date) - oldest first
+    const sortedData = [...reportData].sort((a, b) => {
+      const dateA = new Date(a.FromDate?.S || a.FromDate);
+      const dateB = new Date(b.FromDate?.S || b.FromDate);
+      return dateA - dateB;
+    });
+
+    // Add bookings table with ALL fields
+    doc.setFontSize(14);
+    doc.text('Booking Details', 14, 120);
+    
+    const headers = [
+      'Order ID',
+      'Customer',
+      'From Date',
+      'To Date',
+      'Location',
+      'Original Price',
+      'Discounts',
+      'Final Price',
+      'Status'
+    ];
+    
+    const rows = sortedData.map(booking => {
+      // Format discount information
+      let discountInfo = '';
+      if (booking.HasDiscount) {
+        if (booking.CouponApplied && booking.CouponDetails) {
+          discountInfo += `Coupon: ${booking.CouponDetails}\n`;
+        }
+        if (booking.OfferApplied && booking.OfferDetails) {
+          discountInfo += `Offer: ${booking.OfferDetails}\n`;
+        }
+        discountInfo += `Saved: £${parseFloat(booking.TotalSavings || 0).toFixed(2)}`;
+      } else {
+        discountInfo = 'None';
+      }
+
+      return [
+        booking.OrderId || 'N/A',
+        booking.ParkingName?.substring(0, 15) || 'N/A',
+        formatDateDDMMYYYY(booking.FromDate?.S || booking.FromDate),
+        formatDateDDMMYYYY(booking.ToDate?.S || booking.ToDate),
+        `${booking.Location || 'N/A'} (${booking.Airport || 'N/A'})`.substring(0, 15),
+        `£${booking.OriginalPrice || booking.PaidAmount || '0.00'}`,
+        discountInfo,
+        `£${booking.PaidAmount || '0.00'}`,
+        booking.Status || 'N/A'
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 125,
+      head: [headers],
+      body: rows,
+      theme: 'grid',
+      styles: { 
+        fontSize: 8, 
+        cellPadding: 2,
+        valign: 'middle',
+        minCellHeight: 10
+      },
+      headStyles: { 
+        fillColor: [40, 53, 147],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 'auto' },
+        3: { cellWidth: 'auto' },
+        4: { cellWidth: 'auto' },
+        5: { cellWidth: 'auto' },
+        6: { cellWidth: 'auto' },
+        7: { cellWidth: 'auto' },
+        8: { cellWidth: 'auto' }
+      },
+      margin: { top: 125 },
+      tableWidth: 'wrap',
+      didDrawCell: (data) => {
+        // Handle multi-line discount info
+        if (data.column.index === 6 && data.cell.raw.includes('\n')) {
+          const lines = data.cell.raw.split('\n');
+          doc.setFontSize(7);
+          doc.setTextColor(0, 0, 0);
+          
+          let y = data.cell.y + 4;
+          lines.forEach(line => {
+            doc.text(line, data.cell.x + 2, y);
+            y += 4;
+          });
+          
+          doc.setFontSize(8); // Reset font size
+        }
+      }
+    });
+    
+    // Add discount summary section
+    const discountStatsY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(14);
+    doc.text('Discount Summary', 14, discountStatsY);
+    
+    // Calculate coupon/offer statistics
+    const couponStats = reportData.reduce((stats, booking) => {
+      if (booking.CouponApplied) {
+        stats.count++;
+        const couponValue = parseFloat(booking.CouponDetails?.match(/£(\d+\.\d{2})/)?.[1] || 0);
+        stats.totalValue += couponValue;
+      }
+      return stats;
+    }, { count: 0, totalValue: 0 });
+    
+    const offerStats = reportData.reduce((stats, booking) => {
+      if (booking.OfferApplied) {
+        stats.count++;
+        const offerValue = parseFloat(booking.OfferDetails?.match(/£(\d+\.\d{2})/)?.[1] || 0);
+        stats.totalValue += offerValue;
+      }
+      return stats;
+    }, { count: 0, totalValue: 0 });
+
     doc.setFontSize(10);
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      105,
-      doc.internal.pageSize.height - 10,
-      null,
-      null,
-      'center'
-    );
-  }
-  
-  doc.save(`${reportTitle.toLowerCase().replace(/\s+/g, '-')}.pdf`);
-};
+    doc.text(`Coupons Applied: ${couponStats.count} (Total: £${couponStats.totalValue.toFixed(2)})`, 20, discountStatsY + 10);
+    doc.text(`Offers Applied: ${offerStats.count} (Total: £${offerStats.totalValue.toFixed(2)})`, 20, discountStatsY + 20);
+    
+    // Add footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        105,
+        doc.internal.pageSize.height - 10,
+        null,
+        null,
+        'center'
+      );
+    }
+    
+    doc.save(`${reportTitle.toLowerCase().replace(/\s+/g, '-')}-${today.replace(/\//g, '-')}.pdf`);
+  };
+
+
 
   // Card-specific report functions
   const generateTodayOrdersPDF = () => {
@@ -737,6 +834,13 @@ const filteredData = useMemo(() => {
     setDepartureFlightNumber("");
     setReturnTerminal("");
     setReturnFlightNumber("");
+    setHasDiscount(false);
+    setCouponApplied(false);
+    setOfferApplied(false);
+    setCouponDetails("");
+    setOfferDetails("");
+    setOriginalPrice("");
+    setTotalSavings("");
   };
 
     // Add fetchTerminals function
@@ -805,13 +909,21 @@ const filteredData = useMemo(() => {
     setPaymentMethod(item.PaymentMethod || "");
     setCarNumber(item.CarNumber || "");
     setLocation(item.Location || "");
-    setAirport(item.Airport || ""); // Make sure airport is set
-    setParkingSlot(item.ParkingSlot || ""); // Make sure parking slot is set
+    setAirport(item.Airport || "");
+    setParkingSlot(item.ParkingSlot || "");
     setBookingStatus(item.Status || "");
     setDepartureTerminal(item.DepartureTerminal || "");
     setDepartureFlightNumber(item.DepartureFlightNumber || "");
     setReturnTerminal(item.ReturnTerminal || "");
     setReturnFlightNumber(item.ReturnFlightNumber || "");
+      // Add these lines to handle coupon/offer data
+    setHasDiscount(item.HasDiscount || false);
+    setCouponApplied(item.CouponApplied || false);
+    setOfferApplied(item.OfferApplied || false);
+    setCouponDetails(item.CouponDetails || "");
+    setOfferDetails(item.OfferDetails || "");
+    setOriginalPrice(item.OriginalPrice || item.PaidAmount);
+    setTotalSavings(item.TotalSavings || "0.00");
   };
 
   const handleDelete = (item) => {
@@ -917,6 +1029,58 @@ const filteredData = useMemo(() => {
         onChange: (e) => setReturnFlightNumber(e.target.value),
         type: "text",
         placeholder: "e.g. BA124"
+      },
+      {
+        type: "section",
+        label: "Discount Information"
+      },
+      {
+        label: "Has Discount",
+        value: hasDiscount,
+        onChange: setHasDiscount,
+        type: "checkbox"
+      },
+      {
+        label: "Coupon Applied",
+        value: couponApplied,
+        onChange: setCouponApplied,
+        type: "checkbox",
+        disabled: !hasDiscount
+      },
+      {
+        label: "Coupon Details",
+        value: couponDetails,
+        onChange: (e) => setCouponDetails(e.target.value),
+        type: "text",
+        disabled: !couponApplied
+      },
+      {
+        label: "Offer Applied",
+        value: offerApplied,
+        onChange: setOfferApplied,
+        type: "checkbox",
+        disabled: !hasDiscount
+      },
+      {
+        label: "Offer Details",
+        value: offerDetails,
+        onChange: (e) => setOfferDetails(e.target.value),
+        type: "text",
+        disabled: !offerApplied
+      },
+      {
+        label: "Original Price",
+        value: originalPrice,
+        onChange: (e) => setOriginalPrice(e.target.value),
+        type: "number",
+        disabled: true
+      },
+      {
+        label: "Total Savings",
+        value: totalSavings,
+        onChange: (e) => setTotalSavings(e.target.value),
+        type: "number",
+        disabled: true
       }
     ]
   }
@@ -997,6 +1161,13 @@ const filteredData = useMemo(() => {
               bookingDate,
               bookingTime
             }),
+            HasDiscount: hasDiscount,
+            CouponApplied: couponApplied,
+            OfferApplied: offerApplied,
+            CouponDetails: couponDetails,
+            OfferDetails: offerDetails,
+            OriginalPrice: originalPrice || paidAmount, // Fallback to paidAmount if no original price
+            TotalSavings: totalSavings || "0.00",
             updatedAt: now.toISOString(),
             DepartureTerminal: departureTerminal,
             DepartureFlightNumber: departureFlightNumber,
@@ -1045,6 +1216,14 @@ const filteredData = useMemo(() => {
             departureFlightNumber,
             returnTerminal,
             returnFlightNumber,
+            hasDiscount,
+            couponApplied,
+            offerApplied,
+            couponDetails,
+            offerDetails,
+            originalPrice: originalPrice || paidAmount,
+            totalSavings: totalSavings || "0.00",
+            paidAmount
           });
 
           await fetchData();
