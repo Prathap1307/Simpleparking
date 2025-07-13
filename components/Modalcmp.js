@@ -94,47 +94,81 @@ const DynamicModal = ({
   };
 
   const renderInputField = (input, index) => {
-      if (input.type === 'section') {
-        return (
-          <div key={index} className="w-full pt-4 border-t border-gray-200">
-            <h4 className="text-lg font-semibold text-gray-900">{input.label}</h4>
-          </div>
-        );
-      }
+    if (input.type === 'section') {
+      return (
+        <div key={index} className="w-full pt-4 border-t border-gray-200">
+          <h4 className="text-lg font-semibold text-gray-900">{input.label}</h4>
+        </div>
+      );
+    }
 
-      if (input.type === 'row') {
-        return (
-          <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {input.inputs.map((subInput, subIndex) => renderInputField(subInput, `${index}-${subIndex}`))}
-          </div>
-        );
-      }
-        if (input.type === 'select') {
-        return (
-          <div key={index} className="w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {input.label}
-            </label>
-            <select
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
-              value={input.value || ''}
-              onChange={input.onChange}
-              disabled={input.disabled}
-              required={input.required}
-            >
-              <option value="">Select {input.label}</option>
-              {input.options?.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {input.disabled && (
-              <p className="mt-1 text-xs text-gray-500">Loading terminals...</p>
-            )}
-          </div>
-        );
-      }
+    if (input.type === 'row') {
+      return (
+        <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {input.inputs.map((subInput, subIndex) => {
+            if (subInput.type === 'button') {
+              return (
+                <div key={`${index}-${subIndex}`} className={`${subInput.fullWidth ? 'col-span-2' : ''}`}>
+                  <Button
+                    color={subInput.color || 'primary'}
+                    variant={subInput.variant || 'solid'}
+                    onPress={subInput.onClick}
+                    isDisabled={subInput.disabled}
+                    className="w-full"
+                  >
+                    {subInput.text}
+                  </Button>
+                </div>
+              );
+            }
+            return renderInputField(subInput, `${index}-${subIndex}`);
+          })}
+        </div>
+      );
+    }
+
+    if (input.type === 'button') {
+      return (
+        <div key={index} className={`${input.fullWidth ? 'col-span-2' : ''}`}>
+          <Button
+            color={input.color || 'primary'}
+            variant={input.variant || 'solid'}
+            onPress={input.onClick}
+            isDisabled={input.disabled}
+            className="w-full"
+          >
+            {input.text}
+          </Button>
+        </div>
+      );
+    }
+
+    if (input.type === 'select') {
+      return (
+        <div key={index} className="w-full">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {input.label}
+          </label>
+          <select
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+            value={input.value || ''}
+            onChange={input.onChange}
+            disabled={input.disabled}
+            required={input.required}
+          >
+            <option value="">Select {input.label}</option>
+            {input.options?.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {input.disabled && (
+            <p className="mt-1 text-xs text-gray-500">Loading terminals...</p>
+          )}
+        </div>
+      );
+    }
 
     if (input.type === 'autocomplete') {
       return (
@@ -162,12 +196,11 @@ const DynamicModal = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {input.label}
           </label>
-          <input
-            type="date"
-            value={input.value || ''}
+          <DatePicker
+            selected={input.value}
             onChange={input.onChange}
             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            min={new Date().toISOString().split('T')[0]}
+            minDate={new Date()}
           />
         </div>
       );
@@ -234,7 +267,6 @@ const DynamicModal = ({
         isOpen={ModalOpen || isOpen} 
         placement={placement} 
         onOpenChange={onOpenChange}
-        className="pt-96"
       >
         <ModalContent>
           {(onClose) => (

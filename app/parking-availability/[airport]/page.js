@@ -11,7 +11,8 @@ import ParkingCard from '@/components/Cardscmp';
 
 export default function ParkingAvailability() {
   const params = useParams();
-  const selectedAirportRaw = params?.selectedAirport;
+  const selectedAirportRaw = params?.airport;
+  console.log(selectedAirportRaw)
   const selectedAirport = decodeURIComponent(selectedAirportRaw || 'London Luton Airport');
 
   const [LocationsData, setLocationsData] = useState([]);
@@ -76,6 +77,16 @@ export default function ParkingAvailability() {
     }
   }, []);
 
+  useEffect(() => {
+    const filtered = ParkingslotData.filter(
+      (slot) =>
+        slot.Location?.toLowerCase().trim() === selectedAirport.toLowerCase().trim()
+    );
+    setFilteredSlots(filtered);
+  }, [ParkingslotData, selectedAirport]);
+
+
+
   return (
     <div className="min-h-screen bg-gray-950">
       <Navbar />
@@ -138,6 +149,7 @@ export default function ParkingAvailability() {
                 duration={duration}
                 index={index}
                 setSearching={setSearching}
+                pricingTiers={slot.pricingTiers} 
               />
             ))}
           </div>

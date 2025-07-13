@@ -19,8 +19,6 @@ export default function Parkingsspace() {
   const [parkingData, setParkingData] = useState([]);
   const [ParkingName, setParkingName] = useState("");
   const [Location, setLocation] = useState("");
-  const [price_per_day, setprice_per_day] = useState("");
-  const [Price_per_hour, setPrice_per_hour] = useState("");
   const [Taxpercentage, setTaxpercentage] = useState("");
   const [Taxname, setTaxname] = useState("");
   const [Status, setStatus] = useState("active");
@@ -29,16 +27,20 @@ export default function Parkingsspace() {
   const [AvailableFacilities, setAvailableFacilities] = useState("");
   const [Displaypicture, setDisplaypicture] = useState("");
 
+  
+  // Dynamic pricing tiers
+  const [pricingTiers, setPricingTiers] = useState([
+    { minDays: 1, maxDays: 3, basic: "", perDay: "" }
+  ]);
+
   // Fetch locations
   const [LocationsData, setLocationsData] = useState([]);
 
   const columns = [
-    { name: "PARKING NAME", uid: "ParkingName" },
-    { name: "LOCATION", uid: "Location" },
-    { name: "PRICE PER DAY", uid: "price_per_day" },
-    { name: "PRICE PER HOUR", uid: "Price_per_hour" },
-    { name: "STATUS", uid: "Status" },
-    { name: "SPACE", uid: "Space" },
+    { name: "PARKING NAME", uid: "ParkingName", selector: (row) => row.ParkingName },
+    { name: "LOCATION", uid: "Location", selector: (row) => row.Location },
+    { name: "STATUS", uid: "Status", selector: (row) => row.Status },
+    { name: "SPACE", uid: "Space", selector: (row) => row.Space },
     { name: "ACTIONS", uid: "actions" },
   ];
 
@@ -46,6 +48,41 @@ export default function Parkingsspace() {
     active: "success",
     inactive: "danger",
     pending: "warning",
+  };
+
+  // Add new pricing tier
+  const addPricingTier = () => {
+  if (pricingTiers.length === 0) {
+    setPricingTiers([{ minDays: 1, maxDays: 3, basic: "", perDay: "" }]);
+    return;
+  }
+  
+  const lastTier = pricingTiers[pricingTiers.length - 1];
+  const newMinDays = lastTier.maxDays + 1;
+  setPricingTiers([
+    ...pricingTiers,
+    { 
+      minDays: newMinDays, 
+      maxDays: newMinDays,
+      basic: "", 
+      perDay: "" 
+    }
+  ]);
+};
+
+  // Remove pricing tier
+  const removePricingTier = (index) => {
+    if (pricingTiers.length <= 1) return;
+    const newTiers = [...pricingTiers];
+    newTiers.splice(index, 1);
+    setPricingTiers(newTiers);
+  };
+
+  // Update pricing tier
+  const updatePricingTier = (index, field, value) => {
+    const newTiers = [...pricingTiers];
+    newTiers[index] = { ...newTiers[index], [field]: value };
+    setPricingTiers(newTiers);
   };
 
   const refreshTableData = async () => {
@@ -69,8 +106,6 @@ export default function Parkingsspace() {
   const resetForm = () => {
     setParkingName("");
     setLocation("");
-    setprice_per_day("");
-    setPrice_per_hour("");
     setTaxpercentage("");
     setTaxname("");
     setSpace("");
@@ -80,6 +115,7 @@ export default function Parkingsspace() {
     setIsEditMode(false);
     setModalOpen(false);
     setDisplaypicture("")
+    setPricingTiers([{ minDays: 1, maxDays: 3, basic: "", perDay: "" }]);
   };
 
   const handleDelete = (item) => {
@@ -122,11 +158,30 @@ export default function Parkingsspace() {
     setCurrentEditItem(item);
     setIsEditMode(true);
     setModalOpen(true);
+        // Set pricing tiers
+    if (item.pricingTiers && Array.isArray(item.pricingTiers)) {
+      setPricingTiers(item.pricingTiers);
+    } else {
+      // Convert old format to new
+      const tiers = [];
+      if (item.pricingTiers?.under10) {
+        tiers.push({ minDays: 0, maxDays: 10, ...item.pricingTiers.under10 });
+      }
+      if (item.pricingTiers?.under20) {
+        tiers.push({ minDays: 10, maxDays: 20, ...item.pricingTiers.under20 });
+      }
+      if (item.pricingTiers?.under30) {
+        tiers.push({ minDays: 20, maxDays: 30, ...item.pricingTiers.under30 });
+      }
+      if (item.pricingTiers?.over30) {
+        tiers.push({ minDays: 30, maxDays: 100, ...item.pricingTiers.over30 });
+      }
+      setPricingTiers(tiers.length > 0 ? tiers : 
+        [{ minDays: 1, maxDays: 3, basic: "", perDay: "" }]);
+    }
 
     setParkingName(item.ParkingName || "");
     setLocation(item.Location || "");
-    setprice_per_day(Number(item.price_per_day) || "");
-    setPrice_per_hour(Number(item.Price_per_hour) || "");
     setTaxpercentage(Number(item.Taxpercentage) || "");
     setTaxname(item.Taxname || "");
     setSpace(Number(item.Space) || "");
@@ -148,9 +203,6 @@ export default function Parkingsspace() {
         value: loc.Airport_name
       }))
     },
-    { label: "Price Per Day", value: price_per_day, onChange: (e) => setprice_per_day(e.target.value), type: "number" },
-    { label: "Price Per Hour", value: Price_per_hour, onChange: (e) => setPrice_per_hour(e.target.value), type: "number" },
-    { label: "Strike Price", value: StrikePrice, onChange: (e) => setStrikePrice(e.target.value), type: "number" },
     { label: "Tax Percentage", value: Taxpercentage, onChange: (e) => setTaxpercentage(e.target.value), type: "number" },
     { label: "Tax Name", value: Taxname, onChange: (e) => setTaxname(e.target.value), type: "text" },
     { label: "Available Space", value: Space, onChange: (e) => setSpace(e.target.value), type: "number" },
@@ -159,8 +211,81 @@ export default function Parkingsspace() {
     {
       label: "Status", value: Status, onChange: setStatus, type: "autocomplete",
       options: [{ label: "Active", value: "active" }, { label: "Inactive", value: "inactive" }]
+    },
+        // Dynamic pricing section header
+    {
+      type: 'section',
+      label: 'Pricing Tiers'
     }
   ];
+
+  // Add dynamic pricing rows
+  pricingTiers.forEach((tier, index) => {
+    modalInputs.push({
+      type: 'row',
+      inputs: [
+        {
+          label: "Min Days",
+          value: tier.minDays,
+          onChange: (e) => {
+            const newMin = parseInt(e.target.value) || 1;
+            updatePricingTier(index, 'minDays', newMin);
+            // Auto-update next tier's minDays if needed
+            if (index < pricingTiers.length - 1 && newMin >= pricingTiers[index + 1].minDays) {
+              updatePricingTier(index + 1, 'minDays', newMin + 1);
+            }
+          },
+          type: "number",
+          min: index === 0 ? 1 : (pricingTiers[index - 1]?.maxDays + 1 || 1)
+        },
+        {
+          label: "Max Days",
+          value: tier.maxDays,
+          onChange: (e) => {
+            const newMax = parseInt(e.target.value) || tier.minDays + 1;
+            updatePricingTier(index, 'maxDays', Math.max(newMax, tier.minDays + 1));
+          },
+          type: "number",
+          min: tier.minDays + 1
+        },
+        {
+          label: "Basic Amount",
+          value: tier.basic,
+          onChange: (e) => updatePricingTier(index, 'basic', e.target.value),
+          type: "number"
+        },
+        {
+          label: "Per Day Rate",
+          value: tier.perDay,
+          onChange: (e) => updatePricingTier(index, 'perDay', e.target.value),
+          type: "number"
+        },
+        {
+          type: 'button',
+          text: '-',
+          color: 'danger',
+          variant: 'flat',
+          onClick: () => removePricingTier(index),
+          disabled: pricingTiers.length <= 1
+        }
+      ]
+    });
+  });
+
+  // Add "Add Row" button
+  modalInputs.push({
+    type: 'row',
+    inputs: [
+      {
+        type: 'button',
+        text: '+ Add Pricing Tier',
+        color: 'primary',
+        variant: 'flat',
+        onClick: addPricingTier,
+        fullWidth: true
+      }
+    ]
+  });
 
   const modalButtons = [
     {
@@ -176,8 +301,14 @@ export default function Parkingsspace() {
             ...(isEditMode && { id: CurrentEditItem.id }),
             ParkingName,
             Location,
-            price_per_day: Number(price_per_day),
-            Price_per_hour: Number(Price_per_hour),
+            pricingTiers: pricingTiers.map(tier => ({
+              minDays: Number(tier.minDays),
+              maxDays: Number(tier.maxDays),
+              basic: Number(tier.basic),
+              perDay: Number(tier.perDay)
+            })),
+
+            Price_per_hour: Number(pricingTiers.perHour),
             StrikePrice: Number(StrikePrice),
             Taxpercentage: Number(Taxpercentage),
             Taxname,

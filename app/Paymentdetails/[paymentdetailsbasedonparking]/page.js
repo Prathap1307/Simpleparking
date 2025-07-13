@@ -872,7 +872,26 @@ export default function PaymentPage() {
                   </div>
                 </CardBody>
               </Card>
-              <p>hiii</p>
+              <p className="text-xs text-gray-400 text-center mt-4">
+                By placing this order, you agree to our {' '}
+                <a 
+                  href="/Termsandconditions" 
+                  className="text-indigo-400 hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms & Conditions
+                </a>{' '}
+                and {' '}
+                <a 
+                  href="/PrivacyPolicy" 
+                  className="text-indigo-400 hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Privacy Policy
+                </a>
+              </p>
               {clientSecret && (
                 <div className="mt-8 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                   <Elements stripe={stripePromise} options={{ 

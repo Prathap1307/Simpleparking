@@ -382,8 +382,7 @@ const Homepage = () => {
             </div>
           </div>
         </div>
-      </div>
-
+      </div>      
       {/* Features Section */}
       <section className="py-24 px-6 bg-gradient-to-b from-gray-950 to-gray-900">
         <div className="max-w-7xl mx-auto">
@@ -398,7 +397,7 @@ const Homepage = () => {
               WHY CHOOSE US
             </span>
             <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-              The <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Simple parking</span> Difference
+               70%<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">OFF Airport Parking! </span> ✈️
             </h2>
             <p className="text-lg text-gray-400 max-w-3xl mx-auto">
               We're revolutionizing airport parking with cutting-edge technology 
@@ -409,8 +408,8 @@ const Homepage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
-                title: "AI-Powered Pricing",
-                description: "Our algorithms constantly monitor prices to guarantee you the best deal at all times.",
+                title: "Meet & Greet VIP Service",
+                description: "Drop your car and walk straight to check-in! No shuttles, no stress. Limited-time summer sale: Book now and save 70% on secured parking with 24/7 surveillance. ⚡ Instant booking | 🔒 Free cancellation | 🎁 Loyalty rewards – Your car deserves the best!",
                 icon: (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />

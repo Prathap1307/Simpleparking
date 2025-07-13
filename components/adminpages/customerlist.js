@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DynamicTable from "../Tablecmp";
 import DynamicModal from "../Modalcmp";
 import { CircularProgress } from "@heroui/react";
+import * as XLSX from 'xlsx';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
@@ -65,6 +66,55 @@ const CustomerList = () => {
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
+
+  // Excel upload handler
+  const handleExcelUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Process the Excel data to match your database schema
+        const processedData = jsonData.map((row) => {
+          return {
+            ParkingName: row['C'] || '', // Column C - CustomerName
+            CustomerEmail: '', // Not in Excel, leave empty
+            CustomerPhone: [row['D']?.toString() || ''], // Column D - PhoneNumber (convert to string)
+            CarNumber: [row['K'] || ''], // Column K - RegistrationNumber
+            Airport: [], // Not in Excel, leave empty
+            OrderId: [] // Not in Excel, leave empty
+          };
+        });
+
+        // Send data to API
+        setLoading(true);
+        const response = await fetch("/api/Customerlist/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(processedData),
+        });
+
+        if (!response.ok) throw new Error("Failed to upload customers");
+
+        alert("Customers uploaded successfully!");
+        fetchCustomers();
+      } catch (error) {
+        console.error("Error processing Excel file:", error);
+        alert("Failed to process Excel file");
+      } finally {
+        event.target.value = ''; // Reset file input
+        setLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   // Filter customers based on search and date filters
   const filteredData = useMemo(() => {
@@ -380,16 +430,33 @@ const CustomerList = () => {
       {/* Customer Count Card */}
       <Card className="mb-6">
         <CardHeader className="flex justify-between items-center">
-          <span className="font-semibold">Total Customers: {filteredData.length}</span>
-          <Button 
-            color="primary" 
-            onClick={() => {
-              setSelectedCustomer(null);
-              onOpen();
-            }}
-          >
-            Add New Customer
-          </Button>
+          <div className="flex items-center gap-4">
+            <span className="font-semibold">Total Customers: {filteredData.length}</span>
+            <Button 
+              color="primary" 
+              onClick={() => {
+                setSelectedCustomer(null);
+                onOpen();
+              }}
+            >
+              Add New Customer
+            </Button>
+            <div>
+              <input
+                type="file"
+                id="excel-upload"
+                accept=".xlsx,.xls"
+                onChange={handleExcelUpload}
+                style={{ display: 'none' }}
+              />
+              <Button
+                color="secondary"
+                onClick={() => document.getElementById('excel-upload').click()}
+              >
+                Upload Excel
+              </Button>
+            </div>
+          </div>
         </CardHeader>
       </Card>
 

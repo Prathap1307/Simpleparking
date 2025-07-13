@@ -15,7 +15,8 @@ const ParkingCard = ({
   imageUrl, 
   duration,
   index,
-  setSearching
+  setSearching,
+  pricingTiers
 }) => {
   const [expanded, setExpanded] = useState(false);
   const router = useRouter()
@@ -25,16 +26,56 @@ const ParkingCard = ({
     const hoursText = duration.hours === 1 ? 'hour' : 'hours';
     return `${duration.days} ${daysText} ${duration.hours > 0 ? `and ${duration.hours} ${hoursText}` : ''}`;
   };
+
+  const calculatePriceFromTiers = (pricingTiers, days) => {
+      if (!pricingTiers || pricingTiers.length === 0) {
+        return { total: 0, message: "Please contact support@simpleparking.uk" };
+      }
   
+      // Find the matching tier
+      const matchingTier = pricingTiers.find(tier => 
+        days >= tier.minDays && days <= tier.maxDays
+      );
+  
+      if (matchingTier) {
+        const total = matchingTier.basic + (matchingTier.perDay * days);
+        return { total, message: null };
+      }
+  
+      // Check if days exceed all tiers
+      const maxTier = pricingTiers.reduce((max, tier) => 
+        tier.maxDays > max.maxDays ? tier : max
+      );
+      
+      if (days > maxTier.maxDays) {
+        return { total: 0, message: "Please contact support@simpleparking.uk" };
+      }
+  
+      // If no tier matches (shouldn't happen if tiers cover all ranges)
+      return { total: 0, message: "No pricing tier available for this duration" };
+  };
+
+
   const calculateTotalPrice = () => {
+    // First try to calculate based on pricing tiers if available
+    if (pricingTiers && pricingTiers.length > 0) {
+      const { total, message } = calculatePriceFromTiers(pricingTiers, duration.days);
+      if (message) {
+        return message; // This will show the contact message
+      }
+      // Add hourly price if any
+      return total + (duration.hours * pricePerHour);
+    }
+    
+    // Fallback to simple calculation if no pricing tiers
     return (price * duration.days) + (pricePerHour * duration.hours);
   };
 
-  
-    const handleBookNow = () => {
-    setSearching(true);
+  const totalPrice = calculateTotalPrice();
+  const isContactMessage = typeof totalPrice === 'string';
 
-    const totalPrice = calculateTotalPrice()
+  const handleBookNow = () => {
+    setSearching(true);
     
     // Save the booking details to session storage
     sessionStorage.setItem('selectedParking', JSON.stringify({
@@ -52,6 +93,7 @@ const ParkingCard = ({
     router.push(`/Paymentdetails/${encodeURIComponent(title)}`);
   };
 
+  
   return (
     <motion.div
       className="bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-700 overflow-hidden mb-6 group hover:border-indigo-500 transition-all duration-300"
@@ -121,15 +163,6 @@ const ParkingCard = ({
             {/* Pricing Section - Futuristic Design */}
             <div className="md:w-1/3 flex flex-col items-end">
               {/* Day Rate - Highlighted */}
-              <div className="text-right mb-4 p-3 bg-gray-800/30 rounded-xl border border-gray-700/50 hover:border-indigo-500/50 transition-colors">
-                <p className="text-xs text-gray-400 mb-1">DAILY RATE</p>
-                <div className="flex items-end justify-end gap-1">
-                  <span className="text-2xl font-bold text-white bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text">
-                    £{price}
-                  </span>
-                  <span className="text-xs text-gray-400 mb-1">/day</span>
-                </div>
-              </div>
               
               {/* Hourly Rate */}
               {pricePerHour && (
@@ -147,7 +180,11 @@ const ParkingCard = ({
                 <div className="bg-gradient-to-r from-gray-800/70 to-gray-900/70 rounded-lg p-3 border border-gray-700/50 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-indigo-500 to-purple-600" />
                   <p className="text-xs text-gray-300 mb-1">TOTAL FOR {formatDurationText().toUpperCase()}</p>
-                  <p className="text-lg font-bold text-white">£{calculateTotalPrice().toFixed(2)}</p>
+                    {isContactMessage ? (
+                      <div className="text-sm text-yellow-400">{totalPrice}</div>
+                    ) : (
+                      <p className="text-lg font-bold text-white">£{totalPrice.toFixed(2)}</p>
+                    )}
                 </div>
               </div>
               
