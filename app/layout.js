@@ -1,6 +1,7 @@
 // app/layout.js
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Head from 'next/head'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,7 +38,7 @@ export const metadata = {
     description: "Affordable Heathrow meet & greet parking from just £30! Save 70% on official airport parking. Book online for the best rates.",
     url: "https://simpleparking.uk",
     images: [{
-      url: "/og-image.jpg",
+      url: "/favicon.ico",
       width: 1200,
       height: 630,
       alt: "SimpleParking Heathrow Parking Deal",
@@ -58,6 +59,21 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <Head>
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-RFC99GL7N2"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-RFC99GL7N2');
+            `,
+          }}
+        />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         
