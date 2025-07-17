@@ -325,7 +325,7 @@ const Homepage = () => {
       </div>
 
       {/* Hero Section with Parallax */}
-      <div className="relative overflow-hidden h-screen">
+      <div className="relative h-screen" >
         <ParallaxSection speed={0.5}>
           <Image
             alt="Hero"
@@ -334,10 +334,11 @@ const Homepage = () => {
             src="https://images.unsplash.com/photo-1629238727881-cdc61062fba1?q=80&w=2670&auto=format&fit=crop"
           />
         </ParallaxSection>
-        
+
         <div id='Searchfrom' className="absolute top-0 left-0 w-full h-full flex items-center justify-center px-4 z-10">
           <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6">
             <div className="w-full md:w-1/2 text-center md:text-left pt-48">
+
               <motion.p 
                 className="text-white text-2xl lg:text-4xl font-semibold cursor-pointer"
                 initial={{ opacity: 0, y: 20 }}
@@ -350,7 +351,7 @@ const Homepage = () => {
                 <span className="text-base lg:text-3xl text-yellow-400">Starting from £19</span>
               </motion.p>
             </div>
-            <div className="w-full md:w-1/2 bg-transparent">
+            <div className="w-full md:w-1/2 bg-transparent mb-20 z-100">
               {searching ? (
                 <LoadingCard text="Searching for Parking..." />
               ) : (
@@ -384,7 +385,7 @@ const Homepage = () => {
         </div>
       </div>      
       {/* Features Section */}
-      <section className="py-24 px-6 bg-gradient-to-b from-gray-950 to-gray-900">
+      <section className="py-24 px-6 bg-gradient-to-b from-gray-950 to-gray-900 -z-100 ">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             className="text-center mb-20"

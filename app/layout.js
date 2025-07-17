@@ -2,6 +2,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Head from 'next/head'
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,21 +61,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <Head>
-        {/* Google Analytics */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-RFC99GL7N2"></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-RFC99GL7N2');
-            `,
-          }}
-        />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <GoogleAnalytics />
         {children}
         
         {/* Schema Markup */}
