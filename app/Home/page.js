@@ -325,7 +325,7 @@ const Homepage = () => {
       </div>
 
       {/* Hero Section with Parallax */}
-      <div className="relative h-screen" >
+      <div className="relative lg:overflow-hidden md:overflow-hidden h-screen" >
         <ParallaxSection speed={0.5}>
           <Image
             alt="Hero"
@@ -340,7 +340,7 @@ const Homepage = () => {
             <div className="w-full md:w-1/2 text-center md:text-left pt-48">
 
               <motion.p 
-                className="text-white text-2xl lg:text-4xl font-semibold cursor-pointer"
+                className="text-white text-2xl lg:text-4xl font-semibold cursor-pointer mt-20 lg:-mt-20 md:-mt-20"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8 }}
@@ -351,7 +351,7 @@ const Homepage = () => {
                 <span className="text-base lg:text-3xl text-yellow-400">Starting from £19</span>
               </motion.p>
             </div>
-            <div className="w-full md:w-1/2 bg-transparent mb-20 z-100">
+            <div className="w-full md:w-1/2 bg-transparent mb-20 z-100 lg:mt-32 md:mt-32">
               {searching ? (
                 <LoadingCard text="Searching for Parking..." />
               ) : (

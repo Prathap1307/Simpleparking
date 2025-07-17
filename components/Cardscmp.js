@@ -135,15 +135,12 @@ const ParkingCard = ({
               </h3>
               
               {/* Description with Gradient Fade */}
-              <div className="relative mb-4 max-h-20 overflow-hidden">
-                <div className={`text-gray-300 text-sm ${!expanded ? 'line-clamp-3' : ''}`}>
+              <div className="mb-4">
+                <div className="text-gray-300 text-sm">
                   {details?.split(".").filter(Boolean).map((line, index) => (
                     <p key={index} className="mb-1">{line.trim()}</p>
                   ))}
                 </div>
-                {!expanded && (
-                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-gray-900/80 to-transparent" />
-                )}
               </div>
               
               {/* Quick Features */}
