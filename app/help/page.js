@@ -84,8 +84,8 @@ const HelpCenter = () => {
       ),
       title: "Call Us",
       description: "Speak directly with our support team",
-      action: "Call +1 (555) 123-4567",
-      actionLink: "tel:+15551234567",
+      action: "Call +44 7444277110",
+      actionLink: "tel:+447444277110",
       bg: "from-blue-600 to-indigo-600"
     },
     {
@@ -507,13 +507,13 @@ const HelpCenter = () => {
                 <div className="mt-12">
                   <h3 className="text-xl font-bold text-white mb-4">Our Headquarters</h3>
                   <div className="bg-gray-900/50 backdrop-blur-sm p-6 rounded-xl border border-gray-800">
-                    <p className="text-gray-300 mb-2">123 Tech Park Avenue</p>
-                    <p className="text-gray-300 mb-2">San Francisco, CA 94107</p>
-                    <p className="text-gray-300">United States</p>
+                    <p className="text-gray-300 mb-2">595 Sipson Rd, Sipson, </p>
+                    <p className="text-gray-300 mb-2">West Drayton UB7 0JD</p>
+                    <p className="text-gray-300">United Kingdom</p>
                     
                     <div className="mt-6 aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
                       <iframe 
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3153.634371735762!2d-122.3985359242669!3d37.78181677190012!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8085807f10f6a3a1%3A0x4a501367f076adff!2sTech%20Park!5e0!3m2!1sen!2sus!4v1620000000000!5m2!1sen!2sus" 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2484.592869257488!2d-0.450798323810565!3d51.483987012414026!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x487672386d264271%3A0x7c08c7a85cb13991!2s595%20Sipson%20Rd%2C%20Sipson%2C%20West%20Drayton%20UB7%200JD!5e0!3m2!1sen!2suk!4v1753982954713!5m2!1sen!2suk" 
                         width="100%" 
                         height="200" 
                         style={{ border: 0 }}
@@ -620,7 +620,7 @@ const HelpCenter = () => {
                           className="h-4 w-4 rounded bg-gray-800 border-gray-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
                         />
                         <label htmlFor="consent" className="ml-2 block text-sm text-gray-400">
-                          I agree to the <a href="#" className="text-indigo-400 hover:text-indigo-300">privacy policy</a>
+                          I agree to the <a href="/PrivacyPolicy" className="text-indigo-400 hover:text-indigo-300">privacy policy</a>
                         </label>
                       </div>
                       
@@ -651,7 +651,7 @@ const HelpCenter = () => {
                   <h3 className="text-xl font-bold text-white mb-4">Emergency Support</h3>
                   <p className="text-gray-300 mb-6">For urgent issues with your current parking reservation, please call our 24/7 support line immediately.</p>
                   <a 
-                    href="tel:+15551234567" 
+                    href="tel:+447444277110" 
                     className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 magnetic"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

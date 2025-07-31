@@ -193,12 +193,12 @@ const scrollToSearch = () => {
                   <div>
                     <p className="text-gray-400 text-sm">Email</p>
                     <p className="font-medium">
-                      <a href="mailto:privacy@simpleparking.uk" className="text-indigo-400 hover:underline">privacy@simpleparking.uk</a>
+                      <a href="mailto:support@simpleparking.uk" className="text-indigo-400 hover:underline">support@simpleparking.uk</a>
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Postal Address</p>
-                    <p className="font-medium">Data Protection Officer, Simple Parking Ltd, [Your Company Address]</p>
+                    <p className="font-medium">Data Protection Officer, Simple Parking Ltd, 595 Sipson Rd, Sipson, West Drayton UB7 0JD</p>
                   </div>
                 </div>
               </div>
