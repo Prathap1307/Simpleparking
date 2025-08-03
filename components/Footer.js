@@ -38,8 +38,8 @@ const Footer = () =>{
             { 
               title: "Company", 
               links: [
-                { text: "About Us", url: "/about" },
-                { text: "Careers", url: "/careers" },
+                { text: "About Us", url: "/Aboutus" },
+                { text: "Careers", url: "/Careers" },
                 { text: "Blog", url: "/blog" },
                 { text: "Help", url: "/help" }
               ] 

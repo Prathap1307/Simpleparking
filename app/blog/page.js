@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { Image } from '@heroui/react';
 import { useRouter } from 'next/navigation';
+import Navbarcmp from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 
 const MagneticButton = ({ children, onClick = () => {} }) => {
@@ -366,6 +368,7 @@ const BlogPage = () => {
 
   return (
     <div className="bg-gray-900 text-white">
+    <Navbarcmp />
       <BlogHero />
       
       {featuredPost && (
@@ -454,6 +457,7 @@ const BlogPage = () => {
           </motion.div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };

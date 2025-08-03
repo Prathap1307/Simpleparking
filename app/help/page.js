@@ -3,6 +3,8 @@
 import { useState, useRef , useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Image } from '@heroui/react';
+import Navbarcmp from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 
 const HelpCenter = () => {
@@ -279,6 +281,7 @@ const HelpCenter = () => {
 
   return (
     <>
+    <Navbarcmp />
       <MagneticCursor />
       
       {/* Hero Section */}
@@ -686,6 +689,7 @@ const HelpCenter = () => {
           )}
         </div>
       </div>
+      <Footer />
     </>
   );
 };
