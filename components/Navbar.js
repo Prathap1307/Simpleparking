@@ -42,7 +42,7 @@ export default function Navbarcmp() {
                 >
                   {/* Replace with your logo.png */}
                   <img 
-                    src="/favicon.jpg" 
+                    src="/Favicon.jpg" 
                     alt="Simple Parking Logo"
                     className={`h-12 w-auto rounded-md ${scrolled ? 'opacity-100' : 'opacity-90'}`}
                   />

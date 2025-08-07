@@ -5,7 +5,7 @@ const Footer = () =>{
           <div>
             <div className="flex items-center space-x-2 mb-6">
                 <img 
-                  src="/favicon.jpg" 
+                  src="/Favicon.jpg" 
                   alt="Simple Parking Logo"
                   className="h-12 w-auto rounded-md"
                 />
