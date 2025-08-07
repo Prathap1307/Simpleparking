@@ -37,12 +37,17 @@ export default function Navbarcmp() {
           >
             <Link href="/" className="flex items-center space-x-2 magnetic">
               <motion.div 
-                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${scrolled ? 'bg-gradient-to-br from-indigo-600 to-purple-600' : 'bg-gradient-to-br from-indigo-500 to-purple-500'}`}
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <span className="text-xl font-bold text-white">S</span>
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  {/* Replace with your logo.png */}
+                  <img 
+                    src="/favicon.jpg" 
+                    alt="Simple Parking Logo"
+                    className={`h-12 w-auto rounded-md ${scrolled ? 'opacity-100' : 'opacity-90'}`}
+                  />
               </motion.div>
+
               <motion.span 
                 className={`text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${scrolled ? 'from-indigo-400 to-purple-400' : 'from-indigo-300 to-purple-300'}`}
                 whileHover={{ scale: 1.05 }}

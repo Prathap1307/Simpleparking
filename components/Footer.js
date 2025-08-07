@@ -1,12 +1,14 @@
 const Footer = () =>{
     return(
-              <footer className="bg-gray-900 text-white py-12 px-6">
+      <footer className="bg-gray-900 text-white py-12 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center space-x-2 mb-6">
-              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">S</span>
-              </div>
+                <img 
+                  src="/favicon.jpg" 
+                  alt="Simple Parking Logo"
+                  className="h-12 w-auto rounded-md"
+                />
               <h2 className="text-xl font-bold">Simple parking</h2>
             </div>
             <p className="text-gray-400 mb-6">
