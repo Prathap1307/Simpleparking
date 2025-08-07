@@ -185,6 +185,7 @@ export default function Parkingsearchcmp({
                 className="w-full px-4 py-3 bg-gray-50 text-black border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 dateFormat="dd/MM/yyyy"
                 filterDate={!isAirportActive ? (date) => date >= nextActivationDate : undefined}
+                inputMode="none"
               />
             </div>
             <div>
@@ -203,6 +204,7 @@ export default function Parkingsearchcmp({
                 placeholderText="Select time"
                 minTime={minTime}
                 maxTime={maxTime}
+                inputMode="none"
               />
             </div>
           </div>
@@ -229,6 +231,7 @@ export default function Parkingsearchcmp({
                 className="w-full px-4 py-3 bg-gray-50 border text-black border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 dateFormat="dd/MM/yyyy"
                 filterDate={!isAirportActive ? (date) => date >= nextActivationDate : undefined}
+                inputMode="none"
               />
             </div>
             <div>
@@ -247,6 +250,7 @@ export default function Parkingsearchcmp({
                 dateFormat="h:mm aa"
                 minTime={minTime}
                 maxTime={maxTime}
+                inputMode="none"
               />
             </div>
           </div>
@@ -285,5 +289,5 @@ export default function Parkingsearchcmp({
         </button>
       </form>
     </div>
-  );
+  );  
 }

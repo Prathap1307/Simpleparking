@@ -20,7 +20,6 @@ const Homepage = () => {
   const [loading, setLoading] = useState(true);
   const [hasMounted, setHasMounted] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [showIntro, setShowIntro] = useState(true);
   const [errors, setErrors] = useState({
     airport: '',
     dropOff: '',
@@ -83,13 +82,6 @@ const Homepage = () => {
       router.push(`/parking-availability/${selectedAirport}`);
     }, 1500);
   };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowIntro(false);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Parallax Section Component
   const ParallaxSection = ({ children, speed = 1 }) => {
@@ -310,15 +302,6 @@ const Homepage = () => {
   return (
     <>
       <MagneticCursor />
-      
-      {showIntro && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white z-[9999] flex items-center justify-center p-10">
-          <video autoPlay muted playsInline className="object-cover">
-            <source src="/intro.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      )}
 
       <div className='w-full'>
         <Navbarcmp onFindParkingClick={scrollToSearch} />

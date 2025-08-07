@@ -180,6 +180,7 @@ const CheckoutForm = ({
         DepartureFlightNumber: formData.departureFlightNumber,
         ReturnTerminal: formData.returnTerminal,
         ReturnFlightNumber: formData.returnFlightNumber,
+
           // Add coupon/offer details
         HasDiscount: savings.coupon.amount > 0 || savings.offer.amount > 0,
         CouponApplied: savings.coupon.amount > 0,
@@ -191,7 +192,8 @@ const CheckoutForm = ({
           ? `£${savings.offer.amount.toFixed(2)}${savings.offer.type === 'percentage' ? ` (${savings.offer.value}%)` : ''}`
           : null,
         OriginalPrice: (totalPrice + (savings.coupon.amount + savings.offer.amount)).toFixed(2),
-        TotalSavings: (savings.coupon.amount + savings.offer.amount).toFixed(2)
+        TotalSavings: (savings.coupon.amount + savings.offer.amount).toFixed(2),
+        instructions: formData.instructions
       };
 
       const customerData = {
@@ -341,7 +343,8 @@ export default function PaymentPage() {
     departureTerminal: "",
     departureFlightNumber: "",
     returnTerminal: "",
-    returnFlightNumber: ""
+    returnFlightNumber: "",
+    instructions: "" 
   });
   const [searchData, setSearchData] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
@@ -710,7 +713,7 @@ export default function PaymentPage() {
                       </label>
                       <div className="flex gap-3">
                         <select 
-                          className="w-1/4 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="w-1/4 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 text-black"
                           value={formData.phoneCountry} 
                           onChange={handleChange("phoneCountry")}
                           required
@@ -748,7 +751,7 @@ export default function PaymentPage() {
                             Departure Terminal
                           </label>
                           <select
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 text-black"
                             value={formData.departureTerminal}
                             onChange={handleSelectChange("departureTerminal")}
                             required
@@ -780,7 +783,7 @@ export default function PaymentPage() {
                             Return Terminal
                           </label>
                           <select
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500 text-black"
                             value={formData.returnTerminal}
                             onChange={handleSelectChange("returnTerminal")}
                             required
@@ -806,14 +809,22 @@ export default function PaymentPage() {
                         </div>
                       </div>
                     </div>
+                      <div>
+                          <Input
+                            label="Instructions (Optional)"
+                            value={formData.instructions}
+                            onChange={handleChange("instructions")}
+                            placeholder="Add any instructions if you have (optional)"
+                          />
+                    </div>
                   </div>
                   <div className="pt-4 border-t border-gray-200">
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">Coupons</h4>
                     <div className="coupon-application-section p-4 border rounded-lg mb-4 bg-gray-50">
-                      <h3 className="text-lg font-semibold mb-2">Apply Coupon</h3>
+                      <h3 className="text-lg font-semibold mb-2 text-black">Apply Coupon</h3>
                       
                       {currentOffer && !couponApplied && (
-                        <div className="active-offer-banner bg-blue-100 p-3 rounded mb-3">
+                        <div className="active-offer-banner bg-blue-100 p-3 rounded mb-3 text-black">
                           <p className="text-blue-800">
                             Special offer available: {currentOffer.value} 
                             {currentOffer.discountType === 'percentage' ? '% off' : '£ off'}
@@ -827,7 +838,7 @@ export default function PaymentPage() {
                           value={couponInput}
                           onChange={(e) => setCouponInput(e.target.value)}
                           placeholder="Enter coupon code"
-                          className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
                           disabled={couponApplied}
                         />
                         <button
