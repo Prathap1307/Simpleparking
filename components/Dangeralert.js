@@ -1,5 +1,5 @@
-import React from "react";
-import { Alert, Button } from "@heroui/react";
+import React, { useState } from "react";
+import { Alert, Button, Input } from "@heroui/react";
 
 const CustomDangerAlert = ({
   title = "Danger",
@@ -9,6 +9,12 @@ const CustomDangerAlert = ({
   onButton1Click,
   onButton2Click,
 }) => {
+  const [password, setPassword] = useState("");
+  const correctPassword = "Dango"; // Set the correct password here
+
+  // Check if entered password matches
+  const isPasswordCorrect = password === correctPassword;
+
   return (
     <Alert
       color="danger"
@@ -28,12 +34,25 @@ const CustomDangerAlert = ({
       }}
     >
       <p className="text-sm text-default-700 mb-3">{message}</p>
+      
+      {/* Add password input field */}
+      <div className="mb-3">
+        <Input
+          type="password"
+          label="Enter Privacy Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="mb-3"
+        />
+      </div>
+      
       <div className="flex items-center gap-2">
         <Button
           className="bg-background text-default-700 font-medium border-1 shadow-small"
           size="sm"
           variant="bordered"
           onClick={onButton1Click}
+          disabled={!isPasswordCorrect} // Disable if password is incorrect
         >
           {button1Label}
         </Button>

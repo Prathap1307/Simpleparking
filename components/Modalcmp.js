@@ -267,15 +267,16 @@ const DynamicModal = ({
         isOpen={ModalOpen || isOpen} 
         placement={placement} 
         onOpenChange={onOpenChange}
+         className="max-h-[90vh]"
       >
-        <ModalContent>
+        <ModalContent className="overflow-hidden">
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
+              <ModalHeader className="flex flex-col gap-1 sticky top-0 bg-white z-10"> 
                 {modalTitle}
               </ModalHeader>
               
-              <ModalBody className="space-y-4">
+               <ModalBody className="flex-1 overflow-y-auto overscroll-contain">
                 {inputs.map((input, index) => renderInputField(input, index))}
                 
                 {(showRememberMe || showForgotPassword) && (
@@ -299,7 +300,7 @@ const DynamicModal = ({
                 )}
               </ModalBody>
               
-              <ModalFooter>
+              <ModalFooter className="sticky bottom-0 bg-white border-t"> 
                 {buttons.map((button, index) => (
                   <Button
                     key={index}
