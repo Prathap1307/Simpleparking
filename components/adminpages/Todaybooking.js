@@ -47,6 +47,7 @@ export default function TodaysBookings() {
   const [paidAmount, setPaidAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [carNumber, setCarNumber] = useState("");
+  const [instructions,setinstructions] = useState("")
   const [location, setLocation] = useState("");
   const [airport, setAirport] = useState("");
   const [parkingSlot, setParkingSlot] = useState("");
@@ -460,6 +461,7 @@ const filteredData = useMemo(() => {
       'Location': booking.Location || 'N/A',
       'Parking Slot': booking.ParkingSlot || 'N/A',
       'Car Number': booking.CarNumber || 'N/A',
+      'instructions':booking.instructions,
       'Has Discount': booking.HasDiscount ? 'Yes' : 'No',
       'Coupon Applied': booking.CouponApplied ? 'Yes' : 'No',
       'Coupon Details': booking.CouponDetails || 'N/A',
@@ -824,6 +826,7 @@ const filteredData = useMemo(() => {
     setPaidAmount("");
     setPaymentMethod("");
     setCarNumber("");
+    setinstructions("")
     setLocation("");
     setAirport("");
     setParkingSlot("");
@@ -908,6 +911,7 @@ const filteredData = useMemo(() => {
     setPaidAmount(item.PaidAmount || "");
     setPaymentMethod(item.PaymentMethod || "");
     setCarNumber(item.CarNumber || "");
+    setinstructions(item.instructions)
     setLocation(item.Location || "");
     setAirport(item.Airport || "");
     setParkingSlot(item.ParkingSlot || "");
@@ -963,6 +967,7 @@ const filteredData = useMemo(() => {
     { label: "Paid Price", value: paidAmount, onChange: (e) => setPaidAmount(e.target.value), type: "number" },
     { label: "Paid Via", value: paymentMethod, onChange: (e) => setPaymentMethod(e.target.value), type: "text" },
     { label: "Car Number", value: carNumber, onChange: (e) => setCarNumber(e.target.value), type: "text" },
+    { label: "Customer instruction", value: instructions, onChange: (e) => setinstructions(e.target.value), type: "text" },
     {
       label: "Airport",
       value: airport,
@@ -1150,6 +1155,7 @@ const filteredData = useMemo(() => {
             PaidAmount: paidAmount,
             PaymentMethod: paymentMethod,
             CarNumber: carNumber,
+            instructions:instructions,
             Location: location || airport,
             Airport: airport,
             ParkingSlot: parkingSlot,
@@ -1181,6 +1187,7 @@ const filteredData = useMemo(() => {
             CustomerEmail: customerEmail,
             CustomerPhone: customerPhone,
             CarNumber: carNumber,
+            instructions:instructions,
             Airport: airport,
             OrderId: orderId
           });
@@ -1209,6 +1216,7 @@ const filteredData = useMemo(() => {
             toTime,
             airport,
             carNumber,
+            instructions,
             parkingSlot,
             paidAmount,
             paymentMethod,

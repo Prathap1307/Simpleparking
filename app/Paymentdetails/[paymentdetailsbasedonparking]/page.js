@@ -146,67 +146,91 @@ const CheckoutForm = ({
     }
 };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!stripe || !elements) return;
 
-    setProcessing(true);
-    onProcessingChange(true);
+  setProcessing(true);
+  onProcessingChange(true);
 
-    try {
-      if (!validateForm()) return;
+  try {
+    if (!validateForm()) return;
 
-      const orderId = await generateOrderId();
+    // Generate order ID first (this doesn't save anything to DB)
+    const orderId = await generateOrderId();
 
-      const bookingData = {
-        ParkingName: `${formData.firstName} ${formData.lastName}`,
-        CustomerEmail: formData.email,
-        CustomerPhone: `${formData.phoneCountry}${formData.phone}`,
-        FromDate: searchData.dropOffDate,
-        FromTime: searchData.dropOffTime,
-        ToDate: searchData.pickupDate,
-        ToTime: searchData.pickupTime,
-        PaidAmount: totalPrice.toFixed(2),
-        PaymentMethod: "card",
-        CarNumber: formData.licensePlate,
-        Airport: searchData.airport,
-        Location: selectedParking,
-        Status: "pending_payment",
-        OrderId: orderId,
-        bookingDate: new Date().toISOString().split('T')[0],
-        bookingTime: new Date().toTimeString().split(' ')[0],
-        createdAt: new Date().toISOString(),
-        DepartureTerminal: formData.departureTerminal,
-        DepartureFlightNumber: formData.departureFlightNumber,
-        ReturnTerminal: formData.returnTerminal,
-        ReturnFlightNumber: formData.returnFlightNumber,
+    // Prepare booking data (but don't save yet)
+    const bookingData = {
+      ParkingName: `${formData.firstName} ${formData.lastName}`,
+      CustomerEmail: formData.email,
+      CustomerPhone: `${formData.phoneCountry}${formData.phone}`,
+      FromDate: searchData.dropOffDate,
+      FromTime: searchData.dropOffTime,
+      ToDate: searchData.pickupDate,
+      ToTime: searchData.pickupTime,
+      PaidAmount: totalPrice.toFixed(2),
+      PaymentMethod: "card",
+      CarNumber: formData.licensePlate,
+      Airport: searchData.airport,
+      Location: selectedParking,
+      Status: "pending_payment", // Initial status
+      OrderId: orderId,
+      bookingDate: new Date().toISOString().split('T')[0],
+      bookingTime: new Date().toTimeString().split(' ')[0],
+      createdAt: new Date().toISOString(),
+      DepartureTerminal: formData.departureTerminal,
+      DepartureFlightNumber: formData.departureFlightNumber,
+      ReturnTerminal: formData.returnTerminal,
+      ReturnFlightNumber: formData.returnFlightNumber,
+      HasDiscount: savings.coupon.amount > 0 || savings.offer.amount > 0,
+      CouponApplied: savings.coupon.amount > 0,
+      OfferApplied: savings.offer.amount > 0,
+      CouponDetails: savings.coupon.amount > 0 
+        ? `£${savings.coupon.amount.toFixed(2)}${savings.coupon.type === 'percentage' ? ` (${savings.coupon.value}%)` : ''} - ${couponInput}`
+        : null,
+      OfferDetails: savings.offer.amount > 0
+        ? `£${savings.offer.amount.toFixed(2)}${savings.offer.type === 'percentage' ? ` (${savings.offer.value}%)` : ''}`
+        : null,
+      OriginalPrice: (totalPrice + (savings.coupon.amount + savings.offer.amount)).toFixed(2),
+      TotalSavings: (savings.coupon.amount + savings.offer.amount).toFixed(2),
+      instructions: formData.instructions
+    };
 
-          // Add coupon/offer details
-        HasDiscount: savings.coupon.amount > 0 || savings.offer.amount > 0,
-        CouponApplied: savings.coupon.amount > 0,
-        OfferApplied: savings.offer.amount > 0,
-        CouponDetails: savings.coupon.amount > 0 
-          ? `£${savings.coupon.amount.toFixed(2)}${savings.coupon.type === 'percentage' ? ` (${savings.coupon.value}%)` : ''} - ${couponInput}`
-          : null,
-        OfferDetails: savings.offer.amount > 0
-          ? `£${savings.offer.amount.toFixed(2)}${savings.offer.type === 'percentage' ? ` (${savings.offer.value}%)` : ''}`
-          : null,
-        OriginalPrice: (totalPrice + (savings.coupon.amount + savings.offer.amount)).toFixed(2),
-        TotalSavings: (savings.coupon.amount + savings.offer.amount).toFixed(2),
-        instructions: formData.instructions
-      };
+    // Process payment first
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/payment/result`,
+      },
+      redirect: 'if_required'
+    });
 
-      const customerData = {
-        ParkingName: bookingData.customerName,
+    if (error) {
+      throw error;
+    }
+
+    // Only after successful payment processing:
+    if (paymentIntent?.status === "succeeded") {
+      // 1. Save booking to database with confirmed status
+      const bookingResponse = await createBooking({
+        ...bookingData,
+        status: 'confirmed',
+        paymentIntentId: paymentIntent.id
+      });
+
+      if (!bookingResponse?.id) throw new Error('Failed to create booking');
+
+      // 2. Save customer data
+      await processCustomerData({
+        ParkingName: bookingData.ParkingName,
         CustomerEmail: bookingData.CustomerEmail,
         CustomerPhone: bookingData.CustomerPhone,
         CarNumber: bookingData.CarNumber,
         Airport: bookingData.Airport,
         OrderId: bookingData.OrderId
-      };
+      });
 
-      await processCustomerData(customerData);
-
+      // 3. Send confirmation email
       await sendBookingEmail({
         customerName: bookingData.ParkingName,
         customerEmail: bookingData.CustomerEmail,
@@ -225,7 +249,6 @@ const CheckoutForm = ({
         departureFlightNumber: bookingData.DepartureFlightNumber,
         returnTerminal: bookingData.ReturnTerminal,
         returnFlightNumber: bookingData.ReturnFlightNumber,
-          // Add discount details to email
         hasDiscount: bookingData.HasDiscount,
         couponApplied: bookingData.CouponApplied,
         offerApplied: bookingData.OfferApplied,
@@ -233,63 +256,35 @@ const CheckoutForm = ({
         offerDetails: bookingData.OfferDetails,
         originalPrice: bookingData.OriginalPrice,
         totalSavings: bookingData.TotalSavings
-
-      });
-      
-      const bookingResponse = await createBooking(bookingData);
-      if (!bookingResponse?.id) throw new Error('Failed to create booking');
-
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/payment/result`,
-        },
-        redirect: 'if_required'
       });
 
-      const updateBookingStatus = async (bookingId, status) => {
-        try {
-          const response = await fetch('/api/update-booking', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: bookingId,
-              status: status,
-              paymentIntentId: paymentIntent?.id || null
-            })
-          });
+      // 4. Redirect to success page
+      router.push(`/payment/success?bookingId=${bookingResponse.id}`);
+    } else {
+      // Payment is processing (not immediately successful)
+      const bookingResponse = await createBooking({
+        ...bookingData,
+        status: 'pending',
+        paymentIntentId: paymentIntent.id
+      });
 
-          if (!response.ok) {
-            throw new Error('Failed to update booking status');
-          }
-          return await response.json();
-        } catch (err) {
-          console.error('Status update error:', err);
-          throw err;
-        }
-      };
-
-      if (error) {
-        await updateBookingStatus(bookingResponse.id, 'payment_failed');
-        throw error;
-      }
-
-      if (paymentIntent?.status === "succeeded") {
-        await updateBookingStatus(bookingResponse.id, 'confirmed');
-        router.push(`/payment/success?bookingId=${bookingResponse.id}`);
-      } else {
-        await updateBookingStatus(bookingResponse.id, 'pending');
-        router.push(`/payment/pending?bookingId=${bookingResponse.id}`);
-      }
-
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert(`Payment failed: ${error.message}`);
-    } finally {
-      setProcessing(false);
-      onProcessingChange(false);
+      router.push(`/payment/pending?bookingId=${bookingResponse.id}`);
     }
-  };
+
+  } catch (error) {
+    console.error('Payment error:', error);
+    
+    // For failed payments, you might want to:
+    // 1. Create a failed booking record (optional)
+    // 2. Send a payment failed email (different from confirmation)
+    // 3. Show error to user
+    alert(`Payment failed: ${error.message}`);
+    
+  } finally {
+    setProcessing(false);
+    onProcessingChange(false);
+  }
+};
 
   const validateForm = () => {
     if (formData.email !== formData.confirmEmail) {

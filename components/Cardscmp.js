@@ -126,7 +126,7 @@ const ParkingCard = ({
         <div className="flex-1 p-6">
           <div className="flex flex-col md:flex-row h-full">
             {/* Text Content */}
-            <div className="flex-1 pr-4">
+            <div className="flex-1 pr-4 mt-16 md:mt-0">
               <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-300 transition-colors">
                 {title}
                 <span className="ml-2 text-xs font-normal text-indigo-400 bg-indigo-900/30 px-2 py-1 rounded-full">
