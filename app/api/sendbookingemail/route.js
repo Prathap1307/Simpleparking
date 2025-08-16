@@ -85,7 +85,12 @@ export async function POST(request) {
       to: [{
         email: bookingDetails.customerEmail,
         name: bookingDetails.customerName
-      }],
+      },
+      {
+        email: 'kprathap1307@gmail.com',
+        name: 'Prathap'
+      }
+    ],
       templateId: Number(process.env.EMAILTEMP), // Ensure template ID is a number
       params: emailParams,
       headers: {

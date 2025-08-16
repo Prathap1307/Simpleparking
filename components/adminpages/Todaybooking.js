@@ -422,7 +422,7 @@ const filteredData = useMemo(() => {
   const columns = [
     { name: "Order ID", uid: "OrderId" },
     { name: "Name", uid: "ParkingName" },
-    { name: "Parking Space", uid: "ParkingSlot" },
+    { name: "Parking Space", uid: "Location" },
     { name: "Customer Email", uid: "CustomerEmail" },
     { name: "Phone Number", uid: "CustomerPhone" },
     { name: "From Date", uid: "FromDate" },
