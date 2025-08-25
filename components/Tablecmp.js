@@ -178,63 +178,294 @@ export const PrintIcon = (props) => {
 };
 
 const DynamicTable = ({ columns, data, statusOptions, onEdit, onDelete, currentPage, totalPages }) => {
+
   const generatePDF = (item) => {
-    // Convert 30cm x 16cm to pixels (1cm ≈ 28.35px)
-    const width = 30 * 28.35;
-    const height = 16 * 28.35;
-    
-    const doc = new jsPDF({
-      orientation: width > height ? 'landscape' : 'portrait',
-      unit: 'px',
-      format: [width, height]
-    });
+  // A4 landscape dimensions in mm (297mm x 210mm)
+  const pageWidth = 297;
+  const pageHeight = 210;
+  const sectionWidth = pageWidth / 3;
+  const margin = 15;
+  const logoHeight = 15;
+  const logoWidth = 50;
+  
+  const doc = new jsPDF('l', 'mm', 'a4');
+  doc.setFont('helvetica');
 
-    // Add logo or header
-    doc.setFontSize(24);
-    doc.setTextColor(0, 0, 128); // Navy blue color
-    doc.text("SIMPLE PARKING RECEIPT", width/2, 40, { align: "center" });
-    
-    // Add border
-    doc.setDrawColor(0, 0, 128);
-    doc.setLineWidth(2);
-    doc.rect(20, 20, width-40, height-40);
+  // IMPORTANT: Replace with actual logo path or base64 image
+  const logoData = "data:image/jpeg;base64,/9j/4AAQSkZJRgABA..."; // Your actual logo data here
 
-    // Add customer details section
-    doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0);
-    doc.text("CUSTOMER DETAILS", 30, 80);
-    doc.setFontSize(12);
-    doc.text(`Order ID: ${item.OrderId || "N/A"}`, 30, 100);
-    doc.text(`Customer Name: ${item.ParkingName.replace(/\(.*\)/, '').trim() || "N/A"}`, 30, 120);
-    doc.text(`Email: ${item.CustomerEmail || "N/A"}`, 30, 140);
-    doc.text(`Phone: ${item.CustomerPhone || "N/A"}`, 30, 160);
+  // Add logo to first page (centered)
+  doc.addImage(logoData, "JPEG", pageWidth/2 - logoWidth/2, 10, logoWidth, logoHeight);
 
-    // Add booking details section
-    doc.setFontSize(16);
-    doc.text("BOOKING DETAILS", width/2 + 30, 80);
-    doc.setFontSize(12);
-    doc.text(`Parking Space: ${item.ParkingSlot || "N/A"}`, width/2 + 30, 100);
-    doc.text(`Airport: ${item.Airport || "N/A"}`, width/2 + 30, 120);
-    doc.text(`From: ${formatDate(item.FromDate)} ${formatTime(item.FromTime)}`, width/2 + 30, 140);
-    doc.text(`To: ${formatDate(item.ToDate)} ${formatTime(item.ToTime)}`, width/2 + 30, 160);
+  // ========================
+  // FIRST SECTION (LEFT 1/3)
+  // ========================
+  let yPos = 35;
+  
+  // Customer section
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'bold');
+  doc.text('CUSTOMER', margin, yPos);
+  doc.setFont(undefined, 'normal');
+  yPos += 7;
+  doc.text(`Name: ${item.ParkingName.replace(/\(.*\)/, '').trim() || "N/A"}`, margin, yPos);
+  yPos += 7;
+  doc.text(`Mobile: ${item.CustomerPhone || "N/A"}`, margin, yPos);
+  yPos += 7;
+  doc.text(`Booking ref: ${item.OrderId || "N/A"}`, margin, yPos);
+  
+  // Horizontal line
+  yPos += 5;
+  doc.setLineWidth(0.2);
+  doc.line(margin, yPos, sectionWidth - margin, yPos);
+  
+  // Vehicle section
+  yPos += 10;
+  doc.setFont(undefined, 'bold');
+  doc.text('VEHICLE', margin, yPos);
+  doc.setFont(undefined, 'normal');
+  yPos += 7;
+  doc.text(`Car Reg: ${item.CarNumber || "N/A"}`, margin, yPos);
+  yPos += 7;
+  doc.text(`Car model: ${item.CarModel || "N/A"}`, margin, yPos);
+  yPos += 7;
+  doc.text(`Colour: ${item.CarColor || "N/A"}`, margin, yPos);
+  
+  // Horizontal line
+  yPos += 5;
+  doc.line(margin, yPos, sectionWidth - margin, yPos);
+  
+  // Flight details
+  yPos += 10;
+  doc.setFont(undefined, 'bold');
+  doc.text('FLIGHT DETAILS', margin, yPos);
+  doc.setFont(undefined, 'normal');
+  yPos += 7;
+  
+  // Flight header
+  const flightMargin = margin + 5;
+  doc.setFontSize(9);
+  doc.text('Date', flightMargin, yPos);
+  doc.text('Time', flightMargin + 45, yPos);
+  doc.text('Terminal', flightMargin + 80, yPos);
+  
+  // Departure details
+  yPos += 5;
+  doc.setFontSize(10);
+  doc.text('Departure', margin, yPos);
+  yPos += 5;
+  doc.text(formatDate(item.FromDate), flightMargin, yPos);
+  doc.text(formatTime(item.FromTime), flightMargin + 45, yPos);
+  doc.text('T2', flightMargin + 80, yPos);
+  
+  // Return details
+  yPos += 7;
+  doc.text('Return', margin, yPos);
+  yPos += 5;
+  doc.text(formatDate(item.ToDate), flightMargin, yPos);
+  doc.text(formatTime(item.ToTime), flightMargin + 45, yPos);
+  doc.text('T2', flightMargin + 80, yPos);
 
-    // Add payment details section
-    doc.setFontSize(16);
-    doc.text("PAYMENT DETAILS", 30, 200);
-    doc.setFontSize(12);
-    doc.text(`Paid Amount: $${item.PaidAmount || "0"}`, 30, 220);
-    doc.text(`Payment Method: ${item.PaymentMethod || "N/A"}`, 30, 240);
-    doc.text(`Car Number: ${item.CarNumber || "N/A"}`, 30, 260);
+  // ===========================
+  // SECOND SECTION (MIDDLE 1/3)
+  // ===========================
+  const secondSectionX = sectionWidth + margin;
+  yPos = 35;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('ARRIVAL INFORMATION', secondSectionX, yPos);
+  
+  // Date of Arrival
+  yPos += 15;
+  doc.setFontSize(11);
+  doc.text('DATE OF ARRIVAL', secondSectionX, yPos);
+  yPos += 7;
+  doc.setFontSize(13);
+  doc.text(formatDate(item.FromDate), secondSectionX, yPos);
+  
+  // Horizontal line
+  yPos += 10;
+  doc.line(secondSectionX, yPos, sectionWidth * 2 - margin, yPos);
+  
+  // Time of Arrival
+  yPos += 15;
+  doc.setFontSize(11);
+  doc.text('TIME OF ARRIVAL', secondSectionX, yPos);
+  yPos += 7;
+  doc.setFontSize(13);
+  doc.text(formatTime(item.FromTime), secondSectionX, yPos);
+  
+  // Horizontal line
+  yPos += 10;
+  doc.line(secondSectionX, yPos, sectionWidth * 2 - margin, yPos);
+  
+  // Terminal
+  yPos += 15;
+  doc.setFontSize(11);
+  doc.text('TERMINAL', secondSectionX, yPos);
+  yPos += 7;
+  doc.setFontSize(13);
+  doc.text('2', secondSectionX, yPos);
 
-    // Add footer
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Thank you for choosing Simple Parking!", width/2, height - 50, { align: "center" });
-    doc.text(`Generated on ${new Date().toLocaleString()}`, width/2, height - 30, { align: "center" });
+  // ==========================
+  // THIRD SECTION (RIGHT 1/3)
+  // ==========================
+  const thirdSectionX = sectionWidth * 2 + margin;
+  yPos = 35;
+  
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('CONTACT INFORMATION', thirdSectionX, yPos);
+  doc.setFont(undefined, 'normal');
+  
+  yPos += 7;
+  doc.text('After luggage collection call:', thirdSectionX, yPos);
+  yPos += 7;
+  doc.setFont(undefined, 'bold');
+  doc.text('+44 1234 567890', thirdSectionX, yPos);
+  
+  yPos += 10;
+  doc.setFont(undefined, 'normal');
+  doc.text('Customer relations:', thirdSectionX, yPos);
+  yPos += 7;
+  doc.text('support@simpleparking.uk', thirdSectionX, yPos);
+  
+  yPos += 7;
+  doc.text('Amendments/cancellations:', thirdSectionX, yPos);
+  yPos += 7;
+  doc.text('9AM-5PM Mon-Fri', thirdSectionX, yPos);
+  
+  // Horizontal line
+  yPos += 10;
+  doc.line(thirdSectionX, yPos, pageWidth - margin, yPos);
+  
+  // Booking Summary - Aligned like flight details
+  yPos += 15;
+  doc.setFont(undefined, 'bold');
+  doc.text('BOOKING SUMMARY', thirdSectionX, yPos);
+  doc.setFont(undefined, 'normal');
+  
+  const summaryMargin = thirdSectionX + 5;
+  
+  // Header
+  yPos += 7;
+  doc.setFontSize(9);
+  doc.text('Detail', summaryMargin, yPos);
+  doc.text('Value', summaryMargin + 50, yPos);
+  
+  // Content rows
+  yPos += 5;
+  doc.setFontSize(10);
+  
+  const summaryData = [
+    {label: 'Booking ref:', value: item.OrderId || "N/A"},
+    {label: 'Car reg:', value: item.CarNumber || "N/A"},
+    {label: 'Model:', value: item.CarModel || "N/A"},
+    {label: 'Colour:', value: item.CarColor || "N/A"},
+    {label: 'Departure:', value: `${formatDate(item.FromDate)} ${formatTime(item.FromTime)} T2`},
+    {label: 'Return:', value: `${formatDate(item.ToDate)} ${formatTime(item.ToTime)} T2`},
+    {label: 'Paid:', value: `$${item.PaidAmount || "0"}`}
+  ];
+  
+  summaryData.forEach(row => {
+    yPos += 7;
+    doc.text(row.label, summaryMargin, yPos);
+    doc.text(row.value, summaryMargin + 50, yPos);
+  });
 
-    // Open in new tab
-    window.open(doc.output('bloburl'), '_blank');
-  };
+  // =====================
+  // SECOND PAGE
+  // =====================
+  doc.addPage('l', 'a4');
+  
+  // Add logo to second page (centered)
+  doc.addImage(logoData, "JPEG", pageWidth/2 - logoWidth/2, 10, logoWidth, logoHeight);
+  
+  // ===========================
+  // FIRST SECTION (LEFT 1/2 PAGE)
+  // ===========================
+  yPos = 35;
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('TERMS AND CONDITIONS', margin, yPos);
+  
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  const terms = [
+    "1. Parking is at owner's risk. No liability for damage/theft.",
+    "2. Vehicles must have valid tax and MOT.",
+    "3. No refunds for early returns.",
+    "4. Maximum stay: 30 days.",
+    "5. Full payment required in advance.",
+    "6. Vehicles left beyond 30 days will incur additional charges.",
+    "7. We reserve the right to move vehicles when necessary.",
+    "8. Claim procedure must be initiated within 24 hours of retrieval.",
+    "9. No commercial vehicles without prior arrangement.",
+    "10. Customers must declare any modifications to vehicles.",
+    "11. Parking permit must be displayed at all times.",
+    "12. No overnight sleeping in vehicles permitted."
+  ];
+  
+  yPos += 10;
+  terms.forEach(term => {
+    yPos += 7;
+    doc.text(term, margin, yPos);
+  });
+
+  // ============================
+  // THIRD SECTION (RIGHT 1/2 PAGE)
+  // ============================
+  yPos = 35;
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.text('CONTACT INFORMATION', thirdSectionX, yPos);
+  
+  doc.setFont(undefined, 'normal');
+  yPos += 10;
+  doc.text('Thank you for choosing Simple Parking.', thirdSectionX, yPos);
+  yPos += 7;
+  doc.text('Visit simpleparking.uk for future bookings', thirdSectionX, yPos);
+  
+  yPos += 15;
+  doc.text('Customer service:', thirdSectionX, yPos);
+  yPos += 7;
+  doc.setFont(undefined, 'bold');
+  doc.text('+44 1234 567890', thirdSectionX, yPos);
+  
+  yPos += 15;
+  doc.setFont(undefined, 'normal');
+  doc.text('Emergency contact:', thirdSectionX, yPos);
+  yPos += 7;
+  doc.setFont(undefined, 'bold');
+  doc.text('+44 9876 543210', thirdSectionX, yPos);
+  
+  yPos += 15;
+  doc.setFont(undefined, 'normal');
+  doc.text('Generated on:', thirdSectionX, yPos);
+  yPos += 7;
+  doc.text(new Date().toLocaleString(), thirdSectionX, yPos);
+
+  // Save the PDF
+  doc.save(`parking_receipt_${item.OrderId || 'receipt'}.pdf`);
+};
+
+// Helper functions
+function formatDate(dateString) {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+function formatTime(timeString) {
+  if (!timeString) return "N/A";
+  const [hours, minutes] = timeString.split(':');
+  return `${hours}:${minutes}`;
+}
 
   const handleEdit = (item) => {
     onEdit && onEdit(item);

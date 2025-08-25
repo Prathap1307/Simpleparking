@@ -452,8 +452,6 @@ export default function PaymentPage() {
   useEffect(() => {
     if (!totalPrice) return;
 
-    setClientSecret(null); // Reset client secret to force recreation
-
     const createPaymentIntent = async () => {
       try {
         const response = await fetch("/api/create-payment-intent", {

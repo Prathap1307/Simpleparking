@@ -10,6 +10,7 @@ import TodaysBookings from '@/components/adminpages/Todaybooking';
 import BlogManagement from '@/components/adminpages/Blogmanage';
 import CustomerList from '@/components/adminpages/customerlist';
 import CouponsAndOffers from '@/components/adminpages/Coupons_and_offer';
+import Allbookings from '@/components/adminpages/Allbooking';
 
 
 export default function DashboardPage() {
@@ -76,7 +77,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="flex-1 p-8 overflow-y-auto bg-gray-50">
         {selected === 'Today' && <TodaysBookings/>}
-        {selected === 'All' && <span>All Bookings</span>}
+        {selected === 'All' && <Allbookings/>}
         {selected === 'Website' && <span>Website Settings</span>}
         {selected === 'Coupons_And_Offers' && <CouponsAndOffers />}
         {selected === 'Available_parkings' && <Parkingsspace />}

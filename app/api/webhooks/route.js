@@ -39,25 +39,34 @@ export async function POST(req) {
   }
 }
 
+// In your webhook handler (api/webhooks/route.js)
 async function handleSuccessfulPayment(paymentIntent) {
   try {
-    // Update your database
     const bookingId = paymentIntent.metadata?.bookingId;
-    if (!bookingId) throw new Error('No booking ID in metadata');
-
-    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/update-booking`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: bookingId,
-        status: 'confirmed',
-        paymentIntentId: paymentIntent.id
-      })
-    });
-
-    if (!response.ok) throw new Error('Failed to update booking');
     
-    console.log('Booking updated successfully');
+    if (bookingId) {
+      // Update existing booking
+      await updateBookingStatus(bookingId, 'confirmed', paymentIntent.id);
+    } else {
+      // Create new booking from metadata (fallback)
+      const bookingData = {
+        ParkingName: paymentIntent.metadata.name || 'Customer',
+        CustomerEmail: paymentIntent.metadata.email,
+        CustomerPhone: paymentIntent.metadata.phone,
+        CarNumber: paymentIntent.metadata.licensePlate,
+        Airport: paymentIntent.metadata.airport,
+        Location: paymentIntent.metadata.parking,
+        PaidAmount: (paymentIntent.amount / 100).toFixed(2),
+        PaymentMethod: paymentIntent.payment_method_types[0],
+        status: 'confirmed',
+        paymentIntentId: paymentIntent.id,
+        OrderId: paymentIntent.metadata.orderId || `SP-${Date.now()}`
+      };
+      
+      await createBooking(bookingData);
+      await processCustomerData(bookingData);
+      await sendBookingEmail(bookingData);
+    }
   } catch (error) {
     console.error('Failed to handle successful payment:', error);
   }

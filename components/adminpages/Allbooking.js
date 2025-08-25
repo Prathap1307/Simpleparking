@@ -11,7 +11,7 @@ import { Pagination } from "@heroui/react";
 import * as XLSX from 'xlsx'; // Import Excel library
 import { processCustomerData } from '@/utils/customerUtils';
 
-export default function TodaysBookings() {
+export default function Allbookings() {
   const [isEdit, setIsEdit] = useState(false);
   const [currentRecord, setCurrentRecord] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,18 +124,10 @@ export default function TodaysBookings() {
         });
       };
 
-
-      const filteredData = useMemo(() => {
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0];
+const filteredData = useMemo(() => {
+  let result = [...bookingData];
   
-  // First filter by today's date
-  let result = bookingData.filter(booking => {
-    const bookingDate = booking.bookingDate?.S || booking.bookingDate;
-    return bookingDate === today;
-  });
-
-  // Then apply other filters (search, etc.)
+  // Apply search filter
   if (searchTerm) {
     result = result.filter(booking => {
       const fieldValue = booking[searchOption]?.toString().toLowerCase() || '';
@@ -143,13 +135,105 @@ export default function TodaysBookings() {
     });
   }
 
+  // Only proceed with date filtering if we have valid parameters
+  const shouldFilterDates = dateFilterOption || filterFromDate || filterToDate;
+  
+  if (shouldFilterDates) {
+    // Function to normalize dates to YYYY-MM-DD format for comparison
+    const normalizeDate = (dateStr) => {
+      if (!dateStr) return null;
+      
+      try {
+        // Handle both "2025-07-01" and "2025-07-01T23:00:00.000Z" formats
+        const dateObj = new Date(dateStr);
+        if (isNaN(dateObj.getTime())) return null;
+        
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      } catch (error) {
+        console.error('Error normalizing date:', dateStr, error);
+        return null;
+      }
+    };
+
+    // Normalize filter dates (use null if not provided)
+    const fromDateNorm = filterFromDate ? normalizeDate(filterFromDate) : null;
+    const toDateNorm = filterToDate ? normalizeDate(filterToDate) : null;
+
+    // Map the numeric option to meaningful string
+    const getFilterOption = () => {
+      switch(dateFilterOption) {
+        case "$.0": return "booking";
+        case "$.1": return "pickup";
+        case "$.2": return "drop";
+        case "$.3": return "pickup_drop";
+        case "$.4": return "all";
+        default: return dateFilterOption; // fallback
+      }
+    };
+
+    const effectiveFilterOption = getFilterOption();
+
+    console.log('[FILTER] Date range:', {
+      from: fromDateNorm,
+      to: toDateNorm,
+      option: effectiveFilterOption // Log the mapped option
+    });
+
+    result = result.filter(booking => {
+      // Normalize all relevant dates from the booking
+      const bookingDateNorm = normalizeDate(booking.bookingDate?.S || booking.bookingDate);
+      const pickupDateNorm = normalizeDate(booking.FromDate?.S || booking.FromDate);
+      const dropDateNorm = normalizeDate(booking.ToDate?.S || booking.ToDate);
+
+      console.log('[FILTER] Booking dates:', {
+        id: booking.OrderId,
+        booking: bookingDateNorm,
+        pickup: pickupDateNorm,
+        drop: dropDateNorm
+      });
+
+      // Date comparison function
+      const isDateInRange = (date) => {
+        if (!date) return false;
+        const afterFrom = !fromDateNorm || date >= fromDateNorm;
+        const beforeTo = !toDateNorm || date <= toDateNorm;
+        return afterFrom && beforeTo;
+      };
+
+      // Determine which dates to check based on filter option
+      switch (effectiveFilterOption) {
+        case 'booking':
+          return isDateInRange(bookingDateNorm);
+        case 'pickup':
+          return isDateInRange(pickupDateNorm);
+        case 'drop':
+          return isDateInRange(dropDateNorm);
+        case 'pickup_drop':
+          return isDateInRange(pickupDateNorm) || isDateInRange(dropDateNorm);
+        case 'all':
+          return isDateInRange(bookingDateNorm) || 
+                isDateInRange(pickupDateNorm) || 
+                isDateInRange(dropDateNorm);
+        default:
+          // Default to no date filtering if option is invalid
+          return true;
+      }
+    });
+  }
+  
+  console.log('[FILTER] Filtered results:', result.length);
   return result;
 }, [
   bookingData, 
   searchTerm, 
-  searchOption
+  searchOption,
+  dateFilterOption,
+  filterFromDate,
+  filterToDate
 ]);
-
   // Calculate paginated data
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
