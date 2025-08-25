@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState ,useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardBody, Button, Divider, Spinner } from "@heroui/react";
 import { Input } from "@heroui/input";
 import Navbarcmp from "@/components/Navbar";
@@ -202,6 +202,7 @@ const handleSubmit = async (e) => {
       confirmParams: {
         return_url: `${window.location.origin}/payment/result`,
       },
+      redirect: 'if_required'
     });
 
     if (error) {
@@ -448,8 +449,6 @@ export default function PaymentPage() {
     }
   };
 
-  const paymentIntentCreated = useRef(false);
-
   useEffect(() => {
     if (!totalPrice) return;
 
@@ -468,10 +467,8 @@ export default function PaymentPage() {
 
         const data = await response.json();
         if (data.clientSecret) setClientSecret(data.clientSecret);
-        paymentIntentCreated.current = true;
       } catch (error) {
         console.error("Payment intent error:", error);
-        paymentIntentCreated.current = false;
         alert("Failed to initialize payment");
       }
     };
