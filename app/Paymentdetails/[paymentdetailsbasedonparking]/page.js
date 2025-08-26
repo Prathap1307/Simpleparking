@@ -474,7 +474,7 @@ export default function PaymentPage() {
     };
 
     createPaymentIntent();
-  }, [totalPrice, formData.email, formData.licensePlate, savings]);
+  }, [totalPrice, savings]);
 
 
   const handleChange = (field) => (e) => {
