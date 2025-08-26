@@ -369,7 +369,7 @@ const ManageBooking = () => {
               <div className="space-y-6">
                 <div>
                   <label htmlFor="orderId" className="block text-sm font-medium text-gray-300 mb-2">
-                    Order ID
+                    Booking reference (check your email for booking ref)
                   </label>
                   <input
                     id="orderId"
@@ -377,7 +377,7 @@ const ManageBooking = () => {
                     value={orderId}
                     onChange={(e) => setOrderId(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
-                    placeholder="Enter your order ID"
+                    placeholder="Enter your booking reference"
                     required
                   />
                 </div>
